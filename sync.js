@@ -504,7 +504,10 @@
   function panelHTML() {
     const st = stat(), q = quality(), p = peer(), m = me(), D = libDiff();
     const bars = [1, 2, 3, 4].map(i => `<i class="${i <= q.bars ? "on" : ""}" style="height:${5 + i * 3}px"></i>`).join("");
-    const row = (ic, l, sub, ctl, st2) => `<div class="srow"${st2 ? ` style="${st2}"` : ""}>${ic ? `<span class="si">${ic}</span>` : ""}<div class="sl"><b>${l}</b>${sub ? `<small>${sub}</small>` : ""}</div><div class="sc${/class="seg"|type="range"|<input|<\/button>\s*<button/.test(ctl || "") ? " wide" : ""}">${ctl || ""}</div></div>`;
+    const SIc = k => (typeof SI !== "undefined" && SI[k]) || "", Ic = k => (typeof ICON !== "undefined" && ICON[k]) || "";
+    const WIFI = '<svg class="ico" viewBox="0 0 24 24"><path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.6 16a5 5 0 0 1 6.8 0"/><circle cx="12" cy="19.2" r=".6" fill="currentColor"/></svg>';
+    const icFor = l => ({ "Autre tablette": Ic("duo"), "Qualité de connexion": WIFI, "Décalage de lecture estimé": Ic("clock"), "Mode": SIc("ref"), "Suivre la session": SIc("pl"), "Contrôle partagé": Ic("duo"), "Compensation audio de cette tablette": SIc("vol"), "Partage de fichiers": SIc("dl"), "Indicateur dans le lecteur": SIc("spark"), "Bibliothèque commune": SIc("db") })[l] || SIc("info");
+    const row = (ic, l, sub, ctl, st2) => `<div class="srow${ic || icFor(l) ? "" : " ni"}"${st2 ? ` style="${st2}"` : ""}>${ic || icFor(l) ? `<span class="si">${ic || icFor(l)}</span>` : ""}<div class="sl"><b>${l}</b>${sub ? `<small>${sub}</small>` : ""}</div><div class="sctl${/class="seg"|type="range"|<input|<\/button>\s*<button/.test(ctl || "") ? " wide" : ""}">${ctl || ""}</div></div>`;
     const sw = (k, on) => `<button class="sw ${on ? "on" : ""}" data-sy="${k}" role="switch" aria-checked="${!!on}"></button>`;
     const dot = c => `<i class="mgs-dot ${colOf(c)}"></i>`;
     const roleTxt = id => (id === S.master ? "Maître" : "Secondaire");
@@ -514,7 +517,7 @@
     const I = k => (typeof ICON !== "undefined" && ICON[k]) || "";
     return `<h3>Synchronisation des tablettes</h3>
       ${row(dot(st.col), E(st.txt), E(st.sub), S.mode === "synced" ? `<span class="mgs-chip"><i class="mgs-dot mgs-bl" style="width:9px;height:9px"></i>Mode synchronisé</span>` : "")}
-      <div class="srow"><div class="sl"><b>Cette tablette</b><small>${m ? roleTxt(C.id) : "—"}</small><input class="mgs-in" id="mgs-name" maxlength="30" value="${E(myName())}" aria-label="Nom de cette tablette" style="margin-top:6px"></div></div>
+      <div class="srow"><span class="si">${SIc("screen")}</span><div class="sl"><b>Cette tablette</b><small>${m ? roleTxt(C.id) : "—"}</small><input class="mgs-in" id="mgs-name" maxlength="30" value="${E(myName())}" aria-label="Nom de cette tablette" style="margin-top:6px"></div></div>
       ${row("", "Autre tablette", p ? (p.online ? roleTxt(p.id) + " · " + (p.follow ? "suit la session" : "détachée") : "Hors ligne") : "Pas encore appairée", `<b>${p ? E(p.name) : "—"}</b>`)}
       ${row("", "Qualité de connexion", S.status === "online" ? Math.round(S.rtt) + " ms · gigue " + Math.round(S.jitter) + " ms" : "", `<span class="mgs-bars">${bars}</span><span>${q.txt}</span>`)}
       ${row("", "Décalage de lecture estimé", S.mode === "synced" ? "Mesuré entre les deux lectures" : "Actif en mode synchronisé", `<b>${isMaster() ? msTxt(S.peerDrift) : msTxt(S.drift)}</b>`)}
@@ -524,7 +527,7 @@
       ${row("", "Compensation audio de cette tablette", "Retard de sortie du son, en ms (Bluetooth, haut-parleurs)", `<button class="btn ghost" data-sy="calib:-10">${I("minus")}</button><b style="min-width:64px;text-align:center">${C.calib} ms</b><button class="btn ghost" data-sy="calib:10">${I("plus")}</button>`)}
       ${row("", "Partage de fichiers", "Autoriser l’autre tablette à demander des contenus", sw("share", C.allowShare))}
       ${row("", "Indicateur dans le lecteur", "Petite pastille discrète pendant la lecture", sw("ind", C.indicator))}
-      <div class="srow"><div class="sl"><b>Serveur</b><small>Adresse affichée au démarrage du serveur</small><input class="mgs-in" id="mgs-url" inputmode="url" autocapitalize="off" placeholder="wss://192.168.43.1:8443/sync" value="${E(C.url)}" aria-label="Adresse du serveur" style="margin-top:6px"></div></div>
+      <div class="srow"><span class="si">${Ic("cpu")}</span><div class="sl"><b>Serveur</b><small>Adresse affichée au démarrage du serveur</small><input class="mgs-in" id="mgs-url" inputmode="url" autocapitalize="off" placeholder="wss://192.168.43.1:8443/sync" value="${E(C.url)}" aria-label="Adresse du serveur" style="margin-top:6px"></div></div>
       <div class="mgs-act"><button class="btn" data-sy="connect">${S.want ? "Reconnecter" : "Connecter"}</button><button class="btn ghost" data-sy="disconnect">Déconnecter</button><button class="btn ghost" data-sy="syncnow">Synchroniser maintenant</button><button class="btn ghost" data-sy="swap">Échanger les rôles</button></div>
       ${row("", "Bibliothèque commune", S.status === "online" ? D.common + " en commun · " + D.onlyHere.length + " seulement ici · " + D.onlyPeer.length + " seulement sur l’autre" : "Disponible une fois connecté", "")}
       ${miss || mine ? `<div class="mgs-list">${miss}${mine}</div>` : ""}

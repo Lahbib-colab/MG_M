@@ -364,7 +364,7 @@ html[data-kids] .tile[data-c=tv]{display:none}html[data-kids] .tiles{grid-templa
 .sg h3+.srow{border-top:0}
 .si{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--chip);color:var(--acc2);flex:none;font-size:22px}
 .sl{flex:1;min-width:0}.sl b{font-weight:500;font-size:clamp(15px,1.5vw,18px);display:block}.sl small{color:var(--mut);font-size:.82em;display:block;margin-top:2px}
-.sc{display:flex;align-items:center;gap:8px;flex:none}.sc>span{color:var(--mut);font-size:clamp(14px,1.4vw,17px)}
+.sctl{display:flex;align-items:center;gap:8px;flex:none}.sctl>span{color:var(--mut);font-size:clamp(14px,1.4vw,17px)}
 .srow .btn{padding:.55em 1.1em;font-size:15px}
 .srow .sw{width:54px;height:30px;flex:none}
 .srow input[type=number]{background:var(--chip);color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:9px 10px;font-size:17px;width:84px;text-align:center}
@@ -458,7 +458,7 @@ html[data-eco][data-theme=light]{--glass:rgba(255,255,255,.82);--dockbg:rgba(255
 .spage{min-width:0}.spc{display:none}.spc.on{display:block}
 .spt{font-size:clamp(18px,2vw,26px);font-weight:600;padding:2px 6px 12px}
 .spc[data-cat=sync] .spt{display:none}
-.srow{flex-wrap:wrap}.sl{flex:1 1 170px}
+.srow{flex-wrap:wrap}.sl{flex:1 1 0;min-width:120px}
 .sg{margin-bottom:14px}
 
 /* ---------- Adaptation aux appareils ---------- */
@@ -488,8 +488,8 @@ html[data-eco][data-theme=light]{--glass:rgba(255,255,255,.82);--dockbg:rgba(255
   .cf{--room:calc(100cqh - 130px)}
   .sset{grid-template-columns:1fr}.sset[data-view=nav] .spage{display:none}.sset[data-view=page] .snav{display:none}
   .sni{background:var(--glass);border:1px solid var(--gline)}.sni .scc{display:block}.snav{position:static}
-  .srow .sc.wide{flex:1 1 100%;margin-left:54px}.srow .sc.wide .rng{flex:1;width:auto}.srow .sc.wide .seg{flex-wrap:wrap}
-  .sg{padding:2px 14px 4px}
+  .srow .sctl.wide{flex:1 1 100%;margin-left:54px}.srow.ni .sctl.wide{margin-left:0}#sync-card>h3{display:none}.srow .sctl.wide .rng{flex:1;width:auto}.srow .sctl.wide .seg{flex-wrap:wrap}
+  .sg{padding:2px 14px 4px}.spt{display:none}
   .hubg{grid-template-columns:repeat(2,1fr)}.mp{padding:18px 16px}
   .sgrid{grid-template-columns:1fr}
   #np .npm{padding:9vh 6vw 4vh;gap:2vh}#np .npc{width:min(76vw,34vh)}
@@ -519,6 +519,11 @@ html[data-eco][data-theme=light]{--glass:rgba(255,255,255,.82);--dockbg:rgba(255
 .chs{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none}.chs::-webkit-scrollbar{display:none}
 .ch{padding:.45em 1.1em;border-radius:999px;background:var(--chip);border:1px solid var(--line);white-space:nowrap;font-size:15px}.ch.on{background:var(--acc);color:#fff;border-color:transparent}
 #appsBody .ptxt{margin-bottom:10px}
+
+/* ---------- Bandeau de mise à jour ---------- */
+.updbar{position:fixed;left:50%;transform:translateX(-50%);top:max(10px,env(safe-area-inset-top));z-index:140;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px 10px;padding:8px 8px 8px 18px;max-width:calc(100vw - 20px);border-radius:26px;background:rgba(14,26,50,.96);color:#fff;border:1px solid rgba(120,170,255,.35);box-shadow:0 14px 40px rgba(0,0,0,.45);font-size:15px}
+.updbar .btn{padding:.5em 1.1em;font-size:14px}
+html[data-theme=light] .updbar{background:rgba(255,255,255,.97);color:#10203a;border-color:rgba(30,80,170,.25)}
 
 /* ---------- Portrait ---------- */
 @media (orientation:portrait){
@@ -1431,7 +1436,26 @@ $("#mCov").onclick=$("#mInfo").onclick=()=>openNP($("#mCov").getBoundingClientRe
 let npY=null;$("#np").addEventListener("touchstart",e=>{npY=e.touches[0].clientY},{passive:true});$("#np").addEventListener("touchend",e=>{if(npY!=null&&e.changedTouches[0].clientY-npY>140&&!e.target.closest(".npl,input"))history.back();npY=null});
 
 /* ---------- Réglages ---------- */
-const APP_VER="3.0";
+const APP_VER="4.0",APP_BUILD=23;
+/* ---------- Mise à jour de l'application ---------- */
+let UPD_T=0,updating=false;
+function showUpdateBar(remote){if($("#updbar"))return;const b=document.createElement("div");b.id="updbar";b.className="updbar";
+  b.innerHTML=`<span>Nouvelle version disponible${remote?" (build "+remote+")":""}</span><button class="btn" data-u="go">Mettre à jour</button><button class="btn ghost" data-u="no">Plus tard</button>`;document.body.appendChild(b);
+  b.onclick=e=>{const k=e.target.closest("[data-u]")?.dataset.u;if(k==="no")b.remove();else if(k==="go")applyUpdate()}}
+async function applyUpdate(){const b=$("#updbar");if(b)b.querySelector("[data-u=go]").textContent="Mise à jour…";updating=true;
+  try{const reg=await navigator.serviceWorker.getRegistration();if(reg)await reg.update()}catch{}
+  setTimeout(()=>{if(updating)location.reload()},6000)}
+if("serviceWorker"in navigator)navigator.serviceWorker.addEventListener("controllerchange",()=>{if(updating)location.reload()});
+async function checkUpdate(manual){
+  if(!("serviceWorker"in navigator)){if(manual)toast("Mises à jour automatiques indisponibles dans ce mode");return}
+  if(!navigator.onLine){if(manual)toast("Vérification impossible hors connexion");return}
+  const reg=await navigator.serviceWorker.getRegistration().catch(()=>null);
+  if(!reg){if(manual)toast("Mises à jour automatiques indisponibles dans ce mode");return}
+  UPD_T=Date.now();
+  try{const r=await fetch("sw.js?_="+Date.now(),{cache:"no-store"});if(!r.ok)throw 0;const m=(await r.text()).match(/mg-media-v(\d+)/),remote=m?+m[1]:0;
+    if(remote>APP_BUILD){showUpdateBar(remote);if(manual)toast("Nouvelle version disponible")}
+    else{reg.update().catch(()=>{});if(manual)toast("Vous avez la dernière version (build "+APP_BUILD+")")}
+  }catch{if(manual)toast("Vérification impossible")}}
 let WALL=false,WALL_URL="";
 const BGN={nuit:"Nuit MG",carbone:"Carbone rouge",octogone:"Octogone",piste:"Piste",titane:"Titane",rouge:"Rouge MG",heritage:"Héritage",photo:"Votre image"},BGK=["nuit","carbone","octogone","piste","titane","rouge","heritage"];
 const applyBg=()=>{let bg=cfg("bg");if(!BGN[bg]||(bg==="photo"&&!WALL))bg="nuit";$("#scene").dataset.bg=bg;$("#scene .wall").classList.toggle("on",bg==="photo")};
@@ -1469,7 +1493,7 @@ const SI={
  film:'<svg class="ico" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.200v5.600l5-2.800z"/></svg>',
  note:ICON.audio,book:'<svg class="ico" viewBox="0 0 24 24"><path d="M12 6.500C10 5 7 4.500 3 5v13c4-.5 7 0 9 1.500 2-1.500 5-2 9-1.500V5c-4-.5-7 0-9 1.500zM12 6.500v13"/></svg>',img:ICON.img};
 const isWide=c=>/class="seg"|type="range"|<input|<\/button>\s*<button/.test(c||"");
-const sRow=(ic,l,sub,ctl)=>`<div class="srow">${ic?`<span class="si">${ic}</span>`:""}<div class="sl"><b>${l}</b>${sub?`<small>${sub}</small>`:""}</div><div class="sc${isWide(ctl)?" wide":""}">${ctl}</div></div>`;
+const sRow=(ic,l,sub,ctl)=>`<div class="srow${ic?"":" ni"}">${ic?`<span class="si">${ic}</span>`:""}<div class="sl"><b>${l}</b>${sub?`<small>${sub}</small>`:""}</div><div class="sctl${isWide(ctl)?" wide":""}">${ctl}</div></div>`;
 const swc=(k,on)=>`<button class="sw ${on?"on":""}" data-sw="${k}" role="switch" aria-checked="${!!on}"></button>`;
 const btn=(a,l,g=true)=>`<button class="btn ${g?"ghost":""}" data-act="${a}">${l}</button>`;
 async function storageStats(){const out={};let tot=0;for(const c of["films","musique","livres","photos"]){const l=await dbAll(c),sz=l.reduce((a,i)=>a+i.blob.size,0);out[c]={n:l.length,sz};tot+=sz}let q=null;try{q=await navigator.storage.estimate()}catch{}return{out,tot,q}}
@@ -1538,7 +1562,7 @@ async function renderSettings(){const st=await storageStats(),standalone=matchMe
     ${sRow(SI.dl,"Installer sur la tablette",standalone?"Déjà installée":"Icône sur l’écran d’accueil, mode plein écran",standalone?"":btn("inst","Installer",false))}
     ${sRow(SI.ref,"Mettre à jour","Recharge la dernière version",btn("upd","Vérifier"))}
     ${sRow(SI.pl,"Écran de démarrage","Revoir l’animation MG",btn("spl","Revoir"))}
-    ${sRow(SI.info,"Version "+APP_VER,(standalone?"Application installée":"Navigateur")+" · "+(navigator.onLine?"en ligne":"hors ligne")+(pers?" · stockage protégé":""),"")}
+    ${sRow(SI.info,"Version "+APP_VER+" · build "+APP_BUILD,(standalone?"Application installée":"Navigateur")+" · "+(navigator.onLine?"en ligne":"hors ligne")+(pers?" · stockage protégé":""),"")}
     ${sRow(SI.ref,"Réinitialiser les réglages","Thème, sons et lecture. Vos fichiers restent.",btn("rst","Réinitialiser"))}
   </section></div>`;
   setLayout({display:({dark:"Sombre",light:"Clair",auto:"Auto"})[themeMode]+" · "+(BGN[cfg("bg")]||"Nuit MG"),sound:cfg("sound")?(cfg("haptic")?"Sons et vibrations":"Sons activés"):"Sons coupés",play:"Reprise "+(cfg("resume")?"activée":"désactivée"),sync:window.MGSync&&MGSync.state.status==="online"?"Connectée":"Hors ligne",profiles:PROF.length+" profil"+(PROF.length>1?"s":""),apps:APPS.length+" raccourci"+(APPS.length>1?"s":""),storage:sizeOf(st.tot)+" utilisés",security:cfg("pin")?"Verrouillé":"Non verrouillé",about:"Version "+APP_VER});
@@ -1570,7 +1594,7 @@ $("#setBody").addEventListener("click",async e=>{
   else if(k==="tvib"){if(!navigator.vibrate)toast("Vibration non prise en charge sur cet appareil");else if(!cfg("haptic"))toast("Le retour tactile est désactivé");else haptic("win")}
   else if(k.startsWith("clr:")){const c=k.slice(4);if(confirm("Vider cette catégorie ?")){await clearCat(c);toast("Catégorie vidée");renderSettings();counts()}}
   else if(k==="inst"){if(dp){dp.prompt();dp=null}else toast("Menu Chrome ⋮ › Installer l’application")}
-  else if(k==="upd"){try{const r=await navigator.serviceWorker?.getRegistration();if(r){await r.update();toast("Dernière version chargée au prochain démarrage")}else toast("Vous utilisez déjà la dernière version")}catch{toast("Vérification impossible hors connexion")}}
+  else if(k==="upd")checkUpdate(true)
   else if(k==="spl"){history.back();setTimeout(()=>{document.body.insertAdjacentHTML("beforeend",SPL);splashGo()},250)}
   else if(k==="rst"){if(confirm("Réinitialiser les réglages ?")){CFG={...CFG0};LS.set("mg.cfg",CFG);applyTr();applyBg();AUTOSLOW=false;localStorage.setItem("mg.slow","false");applyEco();setTheme("dark");document.documentElement.dataset.motion="";renderSettings();toast("Réglages réinitialisés")}}
 });
@@ -1681,7 +1705,7 @@ function splashGo(){const sp=$("#splash");if(!sp)return;const fast=reduce||cfg("
   setTimeout(()=>{sp.classList.add("out");setTimeout(()=>sp.remove(),800)},fast?300:2900)}
 splashGo();
 applyProfileUI();checkTime();
-setTimeout(fpsWatch,5600);
+setTimeout(fpsWatch,5600);setTimeout(()=>checkUpdate(false),9000);document.addEventListener("visibilitychange",()=>{if(!document.hidden&&Date.now()-UPD_T>18e5)checkUpdate(false)});setInterval(()=>{if(!document.hidden)checkUpdate(false)},216e5);
 addEventListener("load",()=>{const h=location.hash.slice(1);if(["films","musique","livres","photos","jeux","tv"].includes(h)&&!(isKids()&&h==="tv"))setTimeout(()=>open(h),700)});
 if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
 if(navigator.storage?.persist)navigator.storage.persist();
