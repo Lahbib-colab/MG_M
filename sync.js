@@ -504,7 +504,7 @@
   function panelHTML() {
     const st = stat(), q = quality(), p = peer(), m = me(), D = libDiff();
     const bars = [1, 2, 3, 4].map(i => `<i class="${i <= q.bars ? "on" : ""}" style="height:${5 + i * 3}px"></i>`).join("");
-    const row = (ic, l, sub, ctl, st2) => `<div class="srow"${st2 ? ` style="${st2}"` : ""}>${ic ? `<span class="si">${ic}</span>` : ""}<div class="sl"><b>${l}</b>${sub ? `<small>${sub}</small>` : ""}</div><div class="sc">${ctl || ""}</div></div>`;
+    const row = (ic, l, sub, ctl, st2) => `<div class="srow"${st2 ? ` style="${st2}"` : ""}>${ic ? `<span class="si">${ic}</span>` : ""}<div class="sl"><b>${l}</b>${sub ? `<small>${sub}</small>` : ""}</div><div class="sc${/class="seg"|type="range"|<input|<\/button>\s*<button/.test(ctl || "") ? " wide" : ""}">${ctl || ""}</div></div>`;
     const sw = (k, on) => `<button class="sw ${on ? "on" : ""}" data-sy="${k}" role="switch" aria-checked="${!!on}"></button>`;
     const dot = c => `<i class="mgs-dot ${colOf(c)}"></i>`;
     const roleTxt = id => (id === S.master ? "Maître" : "Secondaire");
@@ -533,14 +533,14 @@
   }
   let renderT = 0;
   function render() { clearTimeout(renderT); renderT = setTimeout(() => { const c = $q("#sync-card"); if (!c) return; const ae = document.activeElement; if (ae && c.contains(ae) && ae.tagName === "INPUT") return; c.innerHTML = panelHTML(); }, 80); }
-  function mount(grid) {
-    if (grid.querySelector("#sync-card")) return;
+  function mount(host) {
+    if (host.querySelector("#sync-card")) return;
     const sec = document.createElement("section"); sec.className = "sg"; sec.id = "sync-card"; sec.innerHTML = panelHTML();
-    grid.insertBefore(sec, grid.children[2] || null);
-    if (!C.url) fetch("/healthz", { cache: "no-store" }).then(r => r.json()).then(j => { if (j && j.mgsync && !C.url) { C.url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/sync"; saveC(); render(); } }).catch(() => { });
+    if (host.matches("[data-slot]")) host.appendChild(sec); else host.insertBefore(sec, host.children[2] || null);
+    if (!C.url && /^https?:/.test(location.protocol)) fetch("/healthz", { cache: "no-store" }).then(r => r.json()).then(j => { if (j && j.mgsync && !C.url) { C.url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/sync"; saveC(); render(); } }).catch(() => { });
     scanLib().then(() => { if (S.status === "online") publishLib(); render(); }).catch(() => { });
   }
-  new MutationObserver(() => { const g = document.querySelector("#setBody .sgrid"); if (g) mount(g); }).observe(document.getElementById("setBody") || document.body, { childList: true, subtree: true });
+  new MutationObserver(() => { const g = document.querySelector("#setBody [data-slot=sync]") || document.querySelector("#setBody .sgrid"); if (g) mount(g); }).observe(document.getElementById("setBody") || document.body, { childList: true, subtree: true });
 
   document.addEventListener("click", async e => {
     const b = e.target.closest("#sync-card [data-sy]"); if (!b) return;
