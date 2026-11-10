@@ -6,6 +6,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#050912">
 <meta name="color-scheme" content="dark light">
+<script>
+/* filet de sécurité : si l'application n'a pas démarré après 6,5 s, le splash propose de relancer puis se retire */
+setTimeout(function(){var s=document.getElementById("splash");if(!s||window.__appReady)return;var h=document.getElementById("spHint");if(h){h.textContent="Démarrage interrompu : touchez pour relancer";h.classList.add("on")}s.style.cursor="pointer";s.addEventListener("click",function(){location.reload()});setTimeout(function(){var t=document.getElementById("splash");if(t&&!window.__appReady)t.classList.add("out")},3500)},6500);
+</script>
 <script>try{var m=JSON.parse(localStorage.getItem("mg.theme"))||"dark";document.documentElement.dataset.theme=m==="auto"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):m}catch(e){document.documentElement.dataset.theme="dark"}</script>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -838,8 +842,8 @@ let cat=null,cur=null;
 function show(id){$$(".view").forEach(v=>v.classList.toggle("on",v.id===id));document.documentElement.classList.toggle("inview",!!id)}
 function open(c,push=true){if(c==="apps"&&isKids())return;cat=c;if(c==="apps"){show("v-apps");renderApps()}else if(c==="jeux"){show("v-games");renderGames()}else if(c==="set"){SET_VIEW="nav";show("v-set");renderSettings()}else{show("v-lib");renderLib()}
   if(push)pushNav({c})}
-function home(){gLeave();gameOpen=false;npHide();bkHide();show("");cat=null;closeOv();counts();renderShelf()}
-let gameOpen=false;addEventListener("popstate",()=>{navDepth=(history.state&&history.state.d)||0;if(!goingHome&&$("#v-set").classList.contains("on")&&SET_VIEW==="page"&&phoneMQ.matches){SET_VIEW="nav";applySetView();return}if(goingHome){goingHome=false;npHide();bkHide();closeModal();gameOpen=false;home();return}if(BK.layer){bkLayerHide();return}if(BK.open){bkClose();return}if(npOpen){closeNP();return}if($(".overlay.on"))closeOv();else if(gameOpen)renderGames();else home()});
+function home(){gLeave();gameOpen=false;npHide();try{bkHide()}catch(e){}show("");cat=null;closeOv();counts();renderShelf()}
+let gameOpen=false;addEventListener("popstate",()=>{navDepth=(history.state&&history.state.d)||0;if(!goingHome&&$("#v-set").classList.contains("on")&&SET_VIEW==="page"&&phoneMQ.matches){SET_VIEW="nav";applySetView();return}if(goingHome){goingHome=false;npHide();try{bkHide()}catch(e){}closeModal();gameOpen=false;home();return}if(BK.layer){bkLayerHide();return}if(BK.open){bkClose();return}if(npOpen){closeNP();return}if($(".overlay.on"))closeOv();else if(gameOpen)renderGames();else home()});
 $$("[data-back]").forEach(b=>b.onclick=()=>history.back());
 $("#btnBack").onclick=()=>{if(cat||$(".overlay.on"))history.back();else toast("Vous êtes à l’accueil")};
 $("#btnSet").onclick=async()=>{if(cfg("pin")||isKids()){const v=await askPin("Code des réglages");if(v===null)return;if(v!==cfg("pin"))return bad("Code incorrect")}open("set")};
@@ -1563,7 +1567,7 @@ new MutationObserver(ms=>{for(const m of ms){const t=m.type==="characterData"?m.
 mqScan(document);window.MQ_READY=true;
 
 /* ---------- Réglages ---------- */
-const APP_VER="4.0",APP_BUILD=25;
+const APP_VER="4.0",APP_BUILD=26;
 /* ---------- Mise à jour de l'application ---------- */
 let UPD_T=0,updating=false;
 function showUpdateBar(remote){if($("#updbar"))return;const b=document.createElement("div");b.id="updbar";b.className="updbar";
@@ -1853,9 +1857,9 @@ function epResolve(base,href){if(!href)return"";href=String(href).split("#")[0].
   if(/^[a-z][a-z0-9+.-]*:/i.test(href))return href;const out=[];for(const s of(href.startsWith("/")?href.slice(1):base+href).split("/")){if(s==="..")out.pop();else if(s!=="."&&s!=="")out.push(s)}return out.join("/")}
 const epXml=(t,type="application/xml")=>{if(t==null)return null;const d=new DOMParser().parseFromString(t,type);return d.querySelector("parsererror")?null:d};
 const epMime=p=>({png:"image/png",jpg:"image/jpeg",jpeg:"image/jpeg",gif:"image/gif",webp:"image/webp",svg:"image/svg+xml"})[(p.split(".").pop()||"").toLowerCase()]||"image/png";
-const isEpub=it=>/\.epub$/i.test(it.name||"")||it.type==="application/epub+zip";
-const isAudioFile=it=>/^audio\//.test(it.type||"")||/\.(mp3|m4a|aac|ogg|flac|wav)$/i.test(it.name||"");
-const kindOf=it=>{const ty=META[it.cat].ty;return ty==="book"&&isAudioFile(it)?"audio":ty};
+function isEpub(it){return/\.epub$/i.test(it.name||"")||it.type==="application/epub+zip"}
+function isAudioFile(it){return/^audio\//.test(it.type||"")||/\.(mp3|m4a|aac|ogg|flac|wav)$/i.test(it.name||"")}
+function kindOf(it){const ty=META[it.cat].ty;return ty==="book"&&isAudioFile(it)?"audio":ty}
 
 /* Lit la structure d'un ePub : métadonnées, ordre de lecture, sommaire, couverture. Lève {drm:true} si le livre est protégé. */
 async function readEpub(blob){const z=new Zip(blob);await z.init();
@@ -1893,8 +1897,8 @@ async function importBooks(fs){const books=fs.filter(f=>/\.epub$/i.test(f.name)|
   if(bad.length)toast(bad[0]+(bad.length>1?" (+"+(bad.length-1)+")":""));else toast(ok+" livre"+(ok>1?"s ajoutés":" ajouté"));
   renderLib()}
 async function fillBooks(list){let ch=0;for(const it of list){try{await importBookMeta(it.id,it.blob);ch++}catch{}}if(ch&&cat==="livres"&&$("#v-lib").classList.contains("on"))renderLib()}
-const bookState=id=>LS.get(pk("bk.")+id,null);
-const bookPct=id=>{const s=bookState(id);return s?s.pct||0:0};
+function bookState(id){return LS.get(pk("bk.")+id,null)}
+function bookPct(id){const s=bookState(id);return s?s.pct||0:0}
 
 /* ---------- Chapitres : lecture et nettoyage ---------- */
 async function epChapter(bk,ci){const sp=bk.spine[ci],t=await bk.z.text(sp.href)||"";let d=epXml(t,"application/xhtml+xml");if(!d)d=new DOMParser().parseFromString(t,"text/html");
@@ -2267,7 +2271,7 @@ function splashGo(){const sp=$("#splash");if(!sp)return;const fast=reduce||cfg("
   setTimeout(()=>{sp.classList.add("out");setTimeout(()=>sp.remove(),800)},fast?300:2900)}
 splashGo();
 applyProfileUI();checkTime();
-setTimeout(fpsWatch,5600);setTimeout(()=>checkUpdate(false),9000);document.addEventListener("visibilitychange",()=>{if(!document.hidden&&Date.now()-UPD_T>18e5)checkUpdate(false)});setInterval(()=>{if(!document.hidden)checkUpdate(false)},216e5);
+window.__appReady=true;setTimeout(fpsWatch,5600);setTimeout(()=>checkUpdate(false),9000);document.addEventListener("visibilitychange",()=>{if(!document.hidden&&Date.now()-UPD_T>18e5)checkUpdate(false)});setInterval(()=>{if(!document.hidden)checkUpdate(false)},216e5);
 addEventListener("load",()=>{const h=location.hash.slice(1);if(["films","musique","livres","photos","jeux","tv"].includes(h)&&!(isKids()&&h==="tv"))setTimeout(()=>open(h),700)});
 if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
 if(navigator.storage?.persist)navigator.storage.persist();

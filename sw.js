@@ -1,4 +1,4 @@
-const V = "mg-media-v25";
+const V = "mg-media-v26";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/maskable-512.png", "./icons/logo-mg.png", "./sync.js", "./icons/maskable-192.png", "./icons/monochrome-512.png", "./icons/apple-touch-icon.png", "./icons/favicon-48.png", "./icons/shortcut-96.png"];
 // Les fichiers sont toujours redemandés au réseau (cache: "reload") : sinon un hébergement qui garde les fichiers quelques minutes
 // (GitHub Pages : 10 min) ferait copier d'anciens fichiers dans le cache de la nouvelle version.
