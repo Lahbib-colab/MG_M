@@ -574,7 +574,7 @@ html[data-eco] .bk,html[data-motion=reduce] .bk{transition-duration:.01s}html[da
 .bktt{flex:1;min-width:0;line-height:1.25;padding:0 4px}.bktt b{font-weight:600;font-size:16px}.bktt small{color:var(--mut);font-size:13px}
 .bkbot{position:absolute;left:0;right:0;bottom:0;z-index:20;padding:12px max(20px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 14px) max(20px,env(safe-area-inset-left));background:var(--bar);border-top:1px solid var(--line);transform:translateY(102%);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
 .bk.chrome .bkbot{transform:none}
-.bkch{font-size:14px;font-weight:500;margin-bottom:8px;text-align:center}
+.bkrow1{display:flex;align-items:center;gap:8px;margin-bottom:8px}.bkch{font-size:14px;font-weight:500;text-align:center;flex:1}.bkpn{width:46px;height:36px;border-radius:12px;border:1px solid var(--line);font-size:26px;line-height:1;color:var(--fg);flex:none}.bkpn:active{background:var(--line)}
 .bkst{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--mut);margin-top:6px;font-variant-numeric:tabular-nums}
 .bksel{position:absolute;z-index:40;transform:translateX(-50%);display:none;align-items:center;gap:4px;padding:6px 8px;border-radius:30px;background:rgba(22,24,32,.97);color:#fff;box-shadow:0 12px 34px rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.14)}
 .bksel.on{display:flex}.bksel button{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:#fff}.bksel .hc{width:28px;height:28px;margin:0 3px;border:2px solid rgba(255,255,255,.55)}
@@ -708,7 +708,7 @@ html[data-eco] .bktop,html[data-eco] .bkbot,html[data-eco] .bksheet,html[data-ec
     <button class="bkb" id="bkMark" aria-label="Signet"></button>
   </header>
   <footer class="bkbot" id="bkBot">
-    <div class="bkch mq" id="bkCh"></div>
+    <div class="bkrow1"><button class="bkpn" id="bkPrevB" aria-label="Page précédente">‹</button><div class="bkch mq" id="bkCh"></div><button class="bkpn" id="bkNextB" aria-label="Page suivante">›</button></div>
     <input class="rng" id="bkSeek" type="range" min="0" max="1000" value="0" aria-label="Position dans le livre">
     <div class="bkst"><span id="bkPg"></span><span id="bkPct"></span><span id="bkLeft"></span></div>
   </footer>
@@ -1567,7 +1567,7 @@ new MutationObserver(ms=>{for(const m of ms){const t=m.type==="characterData"?m.
 mqScan(document);window.MQ_READY=true;
 
 /* ---------- Réglages ---------- */
-const APP_VER="4.0",APP_BUILD=26;
+const APP_VER="4.0",APP_BUILD=27;
 /* ---------- Mise à jour de l'application ---------- */
 let UPD_T=0,updating=false;
 function showUpdateBar(remote){if($("#updbar"))return;const b=document.createElement("div");b.id="updbar";b.className="updbar";
@@ -1906,7 +1906,7 @@ async function epChapter(bk,ci){const sp=bk.spine[ci],t=await bk.z.text(sp.href)
   for(const st of d.getElementsByTagName("style"))styles.push(st.textContent);
   for(const l of d.getElementsByTagName("link")){if(!/stylesheet/i.test(l.getAttribute("rel")||""))continue;try{const c=await bk.z.text(epResolve(dir,l.getAttribute("href")));if(c)styles.push(c)}catch{}}
   return{body,styles,dir}}
-const epFs=c=>c.replace(/font-size\s*:\s*([\d.]+)\s*(px|pt)/gi,(m,v,u)=>"font-size:"+(+v/(u.toLowerCase()==="pt"?12:16)).toFixed(3)+"em");
+const epFs=c=>c.replace(/font-size\s*:\s*([\d.]+)\s*(px|pt)/gi,(m,v,u)=>"font-size:"+(+v/(u.toLowerCase()==="pt"?12:16)).toFixed(3)+"em").replace(/(?:-webkit-)?(?:page-)?break-(?:before|after)\s*:\s*[^;}"']+/gi,m=>m.replace(/:\s*.*$/,":auto")).replace(/(^|[;{\s])((?:min-|max-)?height)\s*:\s*[\d.]+\s*[ds]?vh/gi,(m,a,h)=>a+(/^min/i.test(h)?"min-height:0":/^max/i.test(h)?"max-height:none":"height:auto"));
 const epCss=c=>epFs(c.replace(/@font-face\s*\{[^}]*\}/gi,"").replace(/@import[^;]+;/gi,"").replace(/url\([^)]*\)/gi,"none"));
 function epClean(body){body.querySelectorAll("script,style,link,meta,title,iframe,object,embed,form,input,button,select,textarea,video,audio").forEach(e=>e.remove());
   body.querySelectorAll("*").forEach(e=>{for(const a of[...e.attributes]){const n=a.name.toLowerCase();if(n.startsWith("on")||((n==="href"||n==="src"||n==="xlink:href")&&/^\s*javascript:/i.test(a.value)))e.removeAttribute(a.name)}
@@ -1916,8 +1916,21 @@ async function epAssets(bk,dir,root,urls){const tasks=[];
   for(const el of root.querySelectorAll("img,image")){const svg=el.localName==="image";const a=svg?(el.getAttribute("href")||el.getAttributeNS(NS_XL,"href")||el.getAttribute("xlink:href")):el.getAttribute("src");if(!a||/^(data|blob|https?):/i.test(a))continue;
     const path=epResolve(dir,a);tasks.push((async()=>{try{const b=await bk.z.read(path,epMime(path));if(!b)return;const u=URL.createObjectURL(b);urls.push(u);if(svg){el.setAttribute("href",u);el.setAttributeNS(NS_XL,"xlink:href",u)}else{el.setAttribute("src",u);el.removeAttribute("srcset")}}catch{}})())}
   await Promise.all(tasks)}
-/* Texte brut d'un chapitre (même découpage que l'affichage) pour la recherche */
-async function epPlain(bk,ci){bk.plain=bk.plain||{};if(bk.plain[ci]!=null)return bk.plain[ci];const c=await epChapter(bk,ci);epClean(c.body);const w=c.body.ownerDocument.createTreeWalker(c.body,NodeFilter.SHOW_TEXT);let s="",n;while(n=w.nextNode())s+=n.nodeValue;return bk.plain[ci]=s}
+/* Un fichier très long (roman entier dans un seul fichier) est découpé en parties d'environ 30 000 caractères ; les positions restent exprimées pour le fichier entier. */
+const EP_LIM=30000;
+async function epSplit(bk,ci){if(bk.sc&&bk.sc.ci===ci)return bk.sc;const c=await epChapter(bk,ci);epClean(c.body);const body=c.body,tl=n=>(n.textContent||"").length,chain=[];let root=body;
+  for(let d=0;d<6;d++){const els=[...root.childNodes].filter(n=>n.nodeType===1);if(!els.length)break;const total=tl(root);if(total<EP_LIM)break;const big=els.find(e=>tl(e)>total*.9);
+    if(!big||big.childNodes.length<8||/^(p|ul|ol|table|pre|blockquote|h[1-6]|svg)$/i.test(big.localName))break;chain.push(big);root=big}
+  const kids=[...root.childNodes],parts=[];let cur=[],cl=0;
+  kids.forEach(n=>{const L=n.nodeType===3?n.nodeValue.length:tl(n),h=n.nodeType===1&&/^h[1-3]$/i.test(n.localName);
+    if(cur.length&&(cl+L>EP_LIM||(h&&cl>EP_LIM*.4))){parts.push({nodes:cur,len:cl});cur=[];cl=0}cur.push(n);cl+=L});
+  if(cur.length||!parts.length)parts.push({nodes:cur,len:cl});
+  let base=0;const ids={};parts.forEach((pt,k)=>{pt.base=base;base+=pt.len;for(const n of pt.nodes){if(n.nodeType!==1)continue;if(n.id&&ids[n.id]==null)ids[n.id]=k;const nm=n.getAttribute("name");if(nm&&ids[nm]==null)ids[nm]=k;n.querySelectorAll("[id],[name]").forEach(e=>{const i=e.id||e.getAttribute("name");if(i&&ids[i]==null)ids[i]=k})}});
+  return bk.sc={ci,chain,parts,len:base,ids,styles:c.styles,dir:c.dir,body}}
+const bkPartOf=(sp,off)=>{let k=0;for(let i=0;i<sp.parts.length;i++){if(sp.parts[i].base<=off)k=i;else break}return k};
+function epIdText(sp,frag){for(const pt of sp.parts)for(const n of pt.nodes){if(n.nodeType!==1)continue;if(n.id===frag)return n.textContent||"";const e=[...n.querySelectorAll("[id]")].find(x=>x.id===frag);if(e)return e.textContent||""}return""}
+/* Texte brut d'un fichier (même découpage que l'affichage) pour la recherche */
+async function epPlain(bk,ci){bk.plain=bk.plain||{};if(bk.plain[ci]!=null)return bk.plain[ci];const sp=await epSplit(bk,ci);let s="";for(const pt of sp.parts)for(const n of pt.nodes)s+=n.nodeType===3?n.nodeValue:(n.textContent||"");return bk.plain[ci]=s}
 
 /* ---------- Lecteur de livres : interface ---------- */
 const BK_THEMES={paper:{n:"Papier",bg:"#f5f0e6",fg:"#2a251d",acc:"#a8602a",line:"rgba(60,40,20,.16)",dark:0},white:{n:"Blanc",bg:"#ffffff",fg:"#1b1b1d",acc:"#1f6fe0",line:"rgba(0,0,0,.12)",dark:0},
@@ -1947,13 +1960,14 @@ function bkCss(m){const S=BK.S,T=BK_THEMES[bkTheme()],pub=S.ff==="pub",ff=BK_FON
   return`:root{color-scheme:${T.dark?"dark":"light"}}
 html{background:${T.bg}!important;-webkit-tap-highlight-color:transparent}
 html,body{margin:0!important;padding:0!important;max-width:none!important;width:auto!important;-webkit-text-size-adjust:none}body{background:transparent!important}
-@media (hover:none){#rd,#rd *{cursor:pointer}}
+html{touch-action:manipulation}@media (hover:none){#rd,#rd *{cursor:pointer}}
 body{color:${T.fg}!important;${pub?"":`font-family:${ff};`}font-size:${bkFs()}px!important;line-height:${S.lh}!important;text-align:${S.just?"justify":"left"};hyphens:auto;-webkit-hyphens:auto;overflow-wrap:break-word;word-break:normal}
 ${layout}
 #rd{transition:transform ${S.anim==="slide"?".34s cubic-bezier(.22,.7,.2,1)":"0s"},opacity .16s}
 #rd,#rd *{color:${T.fg}!important;background:none!important;background-color:transparent!important;text-shadow:none!important;box-shadow:none!important;max-width:100%!important;word-break:normal!important;line-height:inherit!important}
 ${pub?"":`#rd *:not(pre):not(code):not(kbd):not(samp):not(tt){font-family:inherit!important}`}
-#rd h1,#rd h2,#rd h3,#rd h4,#rd h5,#rd h6{break-after:avoid;break-inside:avoid;text-indent:0!important;line-height:1.28!important;margin-left:0!important;margin-right:0!important}
+#rd *{break-before:auto!important;break-after:auto!important;min-height:0!important}
+#rd h1,#rd h2,#rd h3,#rd h4,#rd h5,#rd h6{break-after:avoid!important;break-inside:avoid;text-indent:0!important;line-height:1.28!important;margin-left:0!important;margin-right:0!important}
 #rd h1{font-size:1.7em!important;margin:.5em 0 .6em!important}#rd h2{font-size:1.4em!important}#rd h3{font-size:1.2em!important}
 #rd p{orphans:2;widows:2;margin-top:0;margin-bottom:${S.just?"0":".55em"};text-indent:${S.just?"1.3em":"0"}}
 #rd h1+p,#rd h2+p,#rd h3+p,#rd hr+p,#rd blockquote+p{text-indent:0}
@@ -1995,54 +2009,66 @@ function bkShow(p,opt={}){const m=BK.m,rd=BK.rd;if(!rd||!m.paged)return;p=Math.m
 function bkPlace(o){let p=0;
   if(o.last)p=BK.pages-1;
   else if(o.frag){const el=BK.doc.getElementById(o.frag)||BK.doc.getElementsByName(o.frag)[0];if(el)p=bkPageOfEl(el)}
-  else if(o.off)p=bkPageOfOffset(o.off);
-  else if(o.frac!=null)p=Math.floor(o.frac*BK.pages);
+  else if(o.off!=null)p=bkPageOfOffset(Math.max(0,o.off-BK.pbase));
+  else if(o.frac!=null){const lf=BK.flen?Math.max(0,Math.min(.999,(o.frac*BK.flen-BK.pbase)/Math.max(1,BK.plen))):o.frac;p=Math.floor(lf*BK.pages)}
   else if(o.page!=null)p=o.page;
   if(BK.m.paged){BK.page=0;bkShow(p,{instant:true})}else{if(o.last)BK.doc.scrollingElement.scrollTop=1e9;else bkScrollTo(p)}
   bkUi();if(o.flash)bkFlash(o.flash.s,o.flash.e)}
-async function bkRender(ci){const bk=BK.book,chap=await epChapter(bk,ci),f=$("#bkF");BK.urls.forEach(u=>URL.revokeObjectURL(u));BK.urls=[];
+async function bkRender(ci,part){const bk=BK.book,sp=await epSplit(bk,ci),pt=sp.parts[part]||sp.parts[0],f=$("#bkF");BK.urls.forEach(u=>URL.revokeObjectURL(u));BK.urls=[];
   const loaded=new Promise(r=>{f.onload=()=>r()});
   f.srcdoc='<!doctype html><html><head><meta charset="utf-8"><style id="pub"></style><style id="base"></style></head><body><div id="rd"></div></body></html>';
   await loaded;const doc=f.contentDocument;doc.documentElement.lang=bk.lang||"fr";
-  epClean(chap.body);await epAssets(bk,chap.dir,chap.body,BK.urls);
-  doc.getElementById("pub").textContent=chap.styles.map(epCss).join("\n");
-  const rd=doc.getElementById("rd");for(const n of[...chap.body.childNodes])rd.appendChild(doc.importNode(n,true));
-  doc.body.className=chap.body.className||"";BK.doc=doc;BK.rd=rd}
-async function bkLoad(ci,o={}){const bk=BK.book,tok=++BK.tok;ci=Math.max(0,Math.min(bk.spine.length-1,ci));
+  const od=sp.body.ownerDocument;let top=null,inner=null;for(const a of sp.chain){const k=a.cloneNode(false);if(inner)inner.appendChild(k);else top=k;inner=k}
+  const cont=inner||od.createElement("div");for(const n of pt.nodes)cont.appendChild(n.cloneNode(true));const root=top||cont;
+  await epAssets(bk,sp.dir,root,BK.urls);
+  doc.getElementById("pub").textContent=sp.styles.map(epCss).join("\n");
+  const rd=doc.getElementById("rd");if(top)rd.appendChild(doc.importNode(top,true));else for(const n of[...cont.childNodes])rd.appendChild(doc.importNode(n,true));
+  doc.body.className=sp.body.className||"";BK.doc=doc;BK.rd=rd;BK.sp=sp;BK.part=sp.parts.indexOf(pt);BK.parts=sp.parts.length;BK.pbase=pt.base;BK.plen=pt.len;BK.flen=sp.len}
+function bkFail(ci,o,tok,e){if(tok!==BK.tok)return;BK.err=String(e&&e.message||e);const d=o.dir||0;
+  if(d&&ci+d>=0&&ci+d<BK.book.spine.length&&(o.skipN||0)<6){toast("Chapitre illisible : passage au suivant");return bkLoad(ci+d,{...o,skipN:(o.skipN||0)+1})}
+  clearTimeout(BK.msgT);$("#bkMsg").textContent="Chapitre illisible : "+BK.err.slice(0,60);$("#bkMsg").classList.add("on");setTimeout(()=>{$("#bkMsg").classList.remove("on")},2600)}
+async function bkLoad(ci,o={}){const bk=BK.book;if(!bk||!BK.open)return;const tok=++BK.tok;ci=Math.max(0,Math.min(bk.spine.length-1,ci));
   clearTimeout(BK.msgT);BK.msgT=setTimeout(()=>{$("#bkMsg").textContent="Chargement…";$("#bkMsg").classList.add("on")},200);const f=$("#bkF");f.style.opacity=0;
-  try{await bkRender(ci)}catch(e){if(tok===BK.tok){clearTimeout(BK.msgT);$("#bkMsg").textContent="Chapitre illisible";$("#bkMsg").classList.add("on")}return}
-  if(tok!==BK.tok)return;BK.ci=ci;bkApply();
+  let sp;try{sp=await epSplit(bk,ci)}catch(e){return bkFail(ci,o,tok,e)}
+  if(tok!==BK.tok)return;const np=sp.parts.length;let part=0;
+  if(o.part!=null)part=Math.max(0,Math.min(np-1,o.part));else if(o.lastPart)part=np-1;else if(o.frag&&sp.ids[o.frag]!=null)part=sp.ids[o.frag];else if(o.off!=null)part=bkPartOf(sp,o.off);else if(o.frac!=null)part=bkPartOf(sp,Math.floor(o.frac*sp.len));
+  try{await bkRender(ci,part)}catch(e){return bkFail(ci,o,tok,e)}
+  if(tok!==BK.tok||!BK.book)return;BK.ci=ci;bkApply();
   await Promise.race([Promise.all([...BK.rd.querySelectorAll("img")].map(i=>i.decode?i.decode().catch(()=>{}):0)),new Promise(r=>setTimeout(r,1500))]);
   if(BK.doc.fonts&&BK.doc.fonts.ready)await Promise.race([BK.doc.fonts.ready,new Promise(r=>setTimeout(r,300))]);
   if(tok!==BK.tok)return;
   BK.single=false;bkCount();bkIndex();if(BK.m.spread&&BK.len<300&&BK.rd.querySelector("img,svg,image")){BK.single=true;bkApply();bkCount()}
+  if(o.dir&&np===1&&BK.len<3&&!BK.rd.querySelector("img,svg,image,table,video")&&ci+o.dir>=0&&ci+o.dir<bk.spine.length)return bkLoad(ci+o.dir,{...(o.dir<0?{lastPart:true,last:true}:{}),dir:o.dir});
   bkApplyHl();bkIndex();bkBind(BK.doc);bkPlace(o);
   f.style.opacity=1;clearTimeout(BK.msgT);$("#bkMsg").classList.remove("on");bkSaveSoon()}
-const bkGoto=(ci,o={})=>ci===BK.ci&&BK.doc?bkPlace(o):bkLoad(ci,o);
+async function bkGoto(ci,o={}){if(!BK.book||!BK.open)return;if(ci===BK.ci&&BK.doc&&BK.sp){const sp=BK.sp;let k=BK.part;if(o.frag&&sp.ids[o.frag]!=null)k=sp.ids[o.frag];else if(o.off!=null)k=bkPartOf(sp,o.off);else if(o.frac!=null)k=bkPartOf(sp,Math.floor(o.frac*sp.len));if(k===BK.part)return bkPlace(o)}return bkLoad(ci,o)}
 function bkRelayout(){if(!BK.doc)return;const off=bkFirstOffset();bkApply();bkCount();bkIndex();BK.page=0;if(BK.m.paged)bkShow(bkPageOfOffset(off),{instant:true});else bkScrollTo(bkPageOfOffset(off));bkUi()}
 
 /* --- navigation --- */
 function bkChromeHide(){if(BK.chrome&&!BK.layer)bkChrome(false)}
 function bkChrome(v){BK.chrome=v==null?!BK.chrome:v;$("#bk").classList.toggle("chrome",BK.chrome)}
-function bkNext(){if(!BK.doc)return;const bk=BK.book;
-  if(BK.m.paged){if(BK.page<BK.pages-1)bkShow(BK.page+1);else if(BK.ci<bk.spine.length-1)bkLoad(BK.ci+1,{});else{toast("Fin du livre");bkShow(BK.page)}}
-  else{const se=BK.doc.scrollingElement;if(se.scrollTop+se.clientHeight>=se.scrollHeight-4){if(BK.ci<bk.spine.length-1)bkLoad(BK.ci+1,{});else toast("Fin du livre")}else se.scrollBy({top:se.clientHeight*.86,behavior:"smooth"})}
+const bkErr=e=>{BK.err=String(e&&e.message||e);toast("Erreur de lecture : "+BK.err.slice(0,80))};
+function bkNext(){if(!BK.doc)return;try{const bk=BK.book,more=()=>BK.part<BK.parts-1,nextCh=()=>BK.ci<bk.spine.length-1;
+  if(BK.m.paged){if(BK.page<BK.pages-1)bkShow(BK.page+1);else if(more())bkLoad(BK.ci,{part:BK.part+1});else if(nextCh())bkLoad(BK.ci+1,{dir:1});else{toast("Fin du livre");bkShow(BK.page)}}
+  else{const se=BK.doc.scrollingElement;if(se.scrollTop+se.clientHeight>=se.scrollHeight-4){if(more())bkLoad(BK.ci,{part:BK.part+1});else if(nextCh())bkLoad(BK.ci+1,{dir:1});else toast("Fin du livre")}else se.scrollBy({top:se.clientHeight*.86,behavior:"smooth"})}}catch(e){bkErr(e)}
   bkChromeHide()}
-function bkPrev(){if(!BK.doc)return;
-  if(BK.m.paged){if(BK.page>0)bkShow(BK.page-1);else if(BK.ci>0)bkLoad(BK.ci-1,{last:true});else bkShow(BK.page)}
-  else{const se=BK.doc.scrollingElement;if(se.scrollTop<=2){if(BK.ci>0)bkLoad(BK.ci-1,{last:true})}else se.scrollBy({top:-se.clientHeight*.86,behavior:"smooth"})}
+function bkPrev(){if(!BK.doc)return;try{
+  if(BK.m.paged){if(BK.page>0)bkShow(BK.page-1);else if(BK.part>0)bkLoad(BK.ci,{part:BK.part-1,last:true});else if(BK.ci>0)bkLoad(BK.ci-1,{lastPart:true,last:true,dir:-1});else bkShow(BK.page)}
+  else{const se=BK.doc.scrollingElement;if(se.scrollTop<=2){if(BK.part>0)bkLoad(BK.ci,{part:BK.part-1,last:true});else if(BK.ci>0)bkLoad(BK.ci-1,{lastPart:true,last:true,dir:-1})}else se.scrollBy({top:-se.clientHeight*.86,behavior:"smooth"})}}catch(e){bkErr(e)}
   bkChromeHide()}
-function bkPct(){const bk=BK.book;if(!bk||!BK.m)return 0;let acc=0;for(let i=0;i<BK.ci;i++)acc+=bk.spine[i].size;const w=bk.spine[BK.ci].size;let fr=0;
-  if(BK.m.paged)fr=BK.pages>1?BK.page/BK.pages:0;else{const se=BK.doc.scrollingElement,mx=se.scrollHeight-se.clientHeight;fr=mx>0?se.scrollTop/mx:0}
-  if(BK.ci===bk.spine.length-1&&(BK.m.paged?BK.page>=BK.pages-1:fr>.98))return 1;return Math.min(1,(acc+w*fr)/bk.total)}
+function bkPct(){const bk=BK.book;if(!bk||!BK.m)return 0;let acc=0;for(let i=0;i<BK.ci;i++)acc+=bk.spine[i].size;const w=bk.spine[BK.ci].size;let lf=0;
+  if(BK.m.paged)lf=BK.pages>1?BK.page/BK.pages:0;else{const se=BK.doc.scrollingElement,mx=se.scrollHeight-se.clientHeight;lf=mx>0?se.scrollTop/mx:0}
+  if(BK.ci===bk.spine.length-1&&BK.part>=BK.parts-1&&(BK.m.paged?BK.page>=BK.pages-1:lf>.98))return 1;
+  const fr=BK.flen?(BK.pbase+lf*BK.plen)/BK.flen:lf;return Math.min(1,(acc+w*fr)/bk.total)}
 function bkUi(){const bk=BK.book;if(!bk||!BK.m||!BK.doc)return;const pc=bkPct();let lab="";for(const e of bk.toc){if(e.ci<=BK.ci)lab=e.label;else break}
-  $("#bkCh").textContent=lab||bk.title;$("#bkMiniL").textContent=lab;const pg=BK.m.paged?"Page "+(BK.page+1)+" / "+BK.pages:"";
-  $("#bkPg").textContent=pg;$("#bkPct").textContent=Math.round(pc*100)+" %";$("#bkMiniR").textContent=Math.round(pc*100)+" %"+(BK.m.paged?" · "+(BK.page+1)+"/"+BK.pages:"");
+  $("#bkCh").textContent=lab||bk.title;$("#bkMiniL").textContent=lab;
+  let pg="",pm="";if(BK.m.paged){const big=BK.parts>1&&BK.plen,est=big?Math.round(BK.pages*BK.flen/Math.max(1,BK.plen)):BK.pages,cur=big?Math.round(BK.pbase/Math.max(1,BK.plen)*BK.pages)+BK.page+1:BK.page+1;pg=(big?"≈ ":"")+"Page "+cur+" / "+est;pm=" · "+cur+"/"+est}
+  $("#bkPg").textContent=pg;$("#bkPct").textContent=Math.round(pc*100)+" %";$("#bkMiniR").textContent=Math.round(pc*100)+" %"+pm;
   const min=Math.round((1-pc)*bk.total*.5/6/230);$("#bkLeft").textContent=min>0?(min>=60?Math.floor(min/60)+" h "+String(min%60).padStart(2,"0"):min+" min")+" restantes":"Fin proche";
   const sk=$("#bkSeek");if(!sk._drag){sk.value=Math.round(pc*1000);pct(sk)}
   $("#bkMark").innerHTML=bkMarked()?BKI.markOn:BKI.mark;$("#bkMark").classList.toggle("on",bkMarked())}
 let bkSvT=0;const bkSaveSoon=()=>{clearTimeout(bkSvT);bkSvT=setTimeout(bkSave,700)};
-function bkSave(){if(!BK.it||!BK.book||!BK.doc||!BK.m)return;LS.set(pk("bk.")+BK.it.id,{ci:BK.ci,off:bkFirstOffset(),pct:Math.round(bkPct()*100),t:Date.now()})}
+function bkSave(){if(!BK.it||!BK.book||!BK.doc||!BK.m)return;LS.set(pk("bk.")+BK.it.id,{ci:BK.ci,off:BK.pbase+bkFirstOffset(),pct:Math.round(bkPct()*100),t:Date.now()})}
 
 /* --- annotations : surlignages, notes, signets --- */
 const bkGetAnn=()=>{const a=LS.get(pk("ann.")+BK.it.id,null)||{};return{bm:a.bm||[],hl:a.hl||[]}};
@@ -2050,10 +2076,10 @@ const bkSaveAnn=()=>LS.set(pk("ann.")+BK.it.id,BK.ann);
 function bkWrap(s,e,cls,id){const doc=BK.doc,w=doc.createTreeWalker(BK.rd,NodeFilter.SHOW_TEXT),L=[];let pos=0,n;
   while(n=w.nextNode()){const len=n.nodeValue.length;if(pos+len>s&&pos<e)L.push([n,Math.max(0,s-pos),Math.min(len,e-pos)]);pos+=len;if(pos>=e)break}
   for(const[nd,a,b]of L){if(b<=a)continue;const r=doc.createRange();r.setStart(nd,a);r.setEnd(nd,b);const m=doc.createElement("mark");m.className=cls;if(id)m.dataset.id=id;try{r.surroundContents(m)}catch{}}}
-const bkHlWrap=h=>bkWrap(h.s,h.e,"hl c"+(h.c|0)+(h.note?" hn":""),h.id);
+const bkHlWrap=h=>{const a=Math.max(0,h.s-BK.pbase),b=Math.min(BK.plen,h.e-BK.pbase);if(b>a)bkWrap(a,b,"hl c"+(h.c|0)+(h.note?" hn":""),h.id)};
 function bkApplyHl(){for(const h of BK.ann.hl.filter(h=>h.ci===BK.ci).sort((a,b)=>a.s-b.s))bkHlWrap(h)}
 function bkUnwrap(sel){BK.doc.querySelectorAll(sel).forEach(m=>{const p=m.parentNode;while(m.firstChild)p.insertBefore(m.firstChild,m);p.removeChild(m);p.normalize()});bkIndex()}
-function bkFlash(s,e){bkWrap(s,e,"fl");bkIndex();setTimeout(()=>{if(BK.doc)bkUnwrap("mark.fl")},2600)}
+function bkFlash(s,e){bkWrap(Math.max(0,s-BK.pbase),Math.max(0,e-BK.pbase),"fl");bkIndex();setTimeout(()=>{if(BK.doc)bkUnwrap("mark.fl")},2600)}
 const bkHasSel=()=>{const s=BK.doc&&BK.doc.getSelection();return!!s&&!s.isCollapsed&&s.toString().trim().length>0};
 function bkSelRange(){const s=BK.doc&&BK.doc.getSelection();if(!s||s.isCollapsed||!s.rangeCount)return null;const r=s.getRangeAt(0);if(!BK.rd.contains(r.commonAncestorContainer))return null;
   const pre=BK.doc.createRange();pre.selectNodeContents(BK.rd);pre.setEnd(r.startContainer,r.startOffset);const st=pre.toString().length,tx=r.toString();if(!tx.trim())return null;return{r,s:st,e:st+tx.length,text:tx}}
@@ -2061,16 +2087,17 @@ function bkSelHide(){$("#bkSel").classList.remove("on")}
 function bkSelUpdate(){const sel=$("#bkSel");if(BK.layer||!BK.doc||!BK.open){sel.classList.remove("on");return}const sr=bkSelRange();if(!sr){sel.classList.remove("on");return}
   const rs=sr.r.getClientRects(),r=rs.length?rs[0]:sr.r.getBoundingClientRect(),fr=$("#bkF").getBoundingClientRect();
   sel.style.left=Math.max(110,Math.min(innerWidth-110,fr.left+r.left+r.width/2))+"px";sel.style.top=Math.max(70,fr.top+r.top-58)+"px";sel.classList.add("on")}
-function bkAddHl(c){const sr=bkSelRange();if(!sr)return null;const h={id:"h"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),ci:BK.ci,s:sr.s,e:sr.e,c,note:"",text:sr.text.replace(/\s+/g," ").trim().slice(0,260),t:Date.now()};
+function bkAddHl(c){const sr=bkSelRange();if(!sr)return null;const h={id:"h"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),ci:BK.ci,s:sr.s+BK.pbase,e:sr.e+BK.pbase,c,note:"",text:sr.text.replace(/\s+/g," ").trim().slice(0,260),t:Date.now()};
   BK.ann.hl.push(h);bkSaveAnn();BK.doc.getSelection().removeAllRanges();bkHlWrap(h);bkIndex();bkSelHide();haptic("sel");return h}
 function bkOpenHl(id){const h=BK.ann.hl.find(x=>x.id===id);if(!h)return;let col=h.c|0;
   modal(`<h3>Surlignage</h3><p class="bkq">${esc(h.text)}</p><div class="hcs">${BKCOL.map((c,i)=>`<button class="hcb ${i===col?"on":""}" data-c="${i}" style="background:${c}" aria-label="Couleur ${i+1}"></button>`).join("")}</div><textarea class="ptxt" id="hnote" rows="3" placeholder="Ajouter une note…">${esc(h.note||"")}</textarea><div class="mact"><button class="btn" data-ok>Enregistrer</button><button class="btn ghost" data-del>Supprimer</button><button class="btn ghost" data-close>Fermer</button></div>`,m=>{
     const prev=m.parentElement.onclick;m.parentElement.onclick=e=>{prev(e);const c=e.target.closest(".hcb");if(c){col=+c.dataset.c;m.querySelectorAll(".hcb").forEach(b=>b.classList.toggle("on",b===c));return}
       if(e.target.closest("[data-ok]")){h.c=col;h.note=m.querySelector("#hnote").value.trim();bkSaveAnn();bkUnwrap('mark[data-id="'+h.id+'"]');bkHlWrap(h);bkIndex();closeModal();if(BK.layer==="panel")bkPanelRender()}
       else if(e.target.closest("[data-del]")){BK.ann.hl=BK.ann.hl.filter(x=>x.id!==id);bkSaveAnn();bkUnwrap('mark[data-id="'+id+'"]');closeModal();if(BK.layer==="panel")bkPanelRender()}}})}
-const bkMarked=()=>BK.doc&&BK.m&&BK.ann.bm.some(b=>b.ci===BK.ci&&bkPageOfOffset(b.off)===BK.page);
-function bkToggleMark(){if(!BK.doc)return;if(bkMarked()){BK.ann.bm=BK.ann.bm.filter(b=>!(b.ci===BK.ci&&bkPageOfOffset(b.off)===BK.page));toast("Signet retiré")}
-  else{const off=bkFirstOffset();BK.ann.bm.push({id:"b"+Date.now().toString(36),ci:BK.ci,off,text:(BK.rd.textContent||"").slice(off,off+90).replace(/\s+/g," ").trim(),t:Date.now()});toast("Signet ajouté")}
+const bkBmHere=b=>b.ci===BK.ci&&b.off>=BK.pbase&&b.off<BK.pbase+BK.plen&&bkPageOfOffset(b.off-BK.pbase)===BK.page;
+const bkMarked=()=>BK.doc&&BK.m&&BK.ann.bm.some(bkBmHere);
+function bkToggleMark(){if(!BK.doc)return;if(bkMarked()){BK.ann.bm=BK.ann.bm.filter(b=>!bkBmHere(b));toast("Signet retiré")}
+  else{const loc=bkFirstOffset();BK.ann.bm.push({id:"b"+Date.now().toString(36),ci:BK.ci,off:BK.pbase+loc,text:(BK.rd.textContent||"").slice(loc,loc+90).replace(/\s+/g," ").trim(),t:Date.now()});toast("Signet ajouté")}
   bkSaveAnn();bkUi();haptic("sel");if(BK.layer==="panel")bkPanelRender()}
 
 /* --- gestes et clavier dans la page --- */
@@ -2091,7 +2118,7 @@ function bkBind(doc){let st=null,tapped=0;
   doc.addEventListener("selectionchange",()=>{clearTimeout(BK.selT);BK.selT=setTimeout(bkSelUpdate,200)});
   doc.addEventListener("contextmenu",e=>{if(!bkHasSel())e.preventDefault()});
   doc.addEventListener("scroll",()=>{if(BK.m&&BK.m.paged){const se=doc.scrollingElement;if(se.scrollLeft||se.scrollTop){se.scrollLeft=0;se.scrollTop=0}}},true)}
-function bkTap(e){if(bkHasSel())return;const a=e.target.closest&&e.target.closest("a[href]");if(a){e.preventDefault();return bkLink(a)}
+function bkTap(e){if(bkHasSel())return;const a=e.target.closest&&e.target.closest("a[href]");if(a&&(a.classList.contains("noteref")||(a.textContent||"").trim().length>0)){e.preventDefault();return bkLink(a)}
   const mk=e.target.closest&&e.target.closest("mark.hl");if(mk&&mk.dataset.id)return bkOpenHl(mk.dataset.id);
   if(BK.layer){history.back();return}$("#bkNote").classList.remove("on");
   const f=$("#bkF");if(BK.m.paged){const x=e.clientX/f.clientWidth;if(x<.27)bkPrev();else if(x>.73)bkNext();else bkChrome()}
@@ -2110,8 +2137,8 @@ function bkLink(a){const href=a.getAttribute("href")||"";if(!href||href==="#")re
   const ci=bk.spine.findIndex(s=>s.href===target||s.href.toLowerCase()===String(target).toLowerCase());if(ci<0)return;
   if(a.classList.contains("noteref")&&frag){bkShowNote(ci,frag).then(ok=>{if(!ok)bkJump(ci,frag)});return}
   bkJump(ci,frag)}
-function bkJump(ci,frag){BK.back={ci:BK.ci,off:bkFirstOffset()};bkGoto(ci,{frag:frag||""});const b=$("#bkBack");b.classList.add("on");clearTimeout(BK.backT);BK.backT=setTimeout(()=>b.classList.remove("on"),9000)}
-async function bkShowNote(ci,frag){let txt="";try{if(ci===BK.ci){const el=BK.doc.getElementById(frag);txt=el?el.textContent:""}else{const c=await epChapter(BK.book,ci);epClean(c.body);const el=[...c.body.querySelectorAll("[id]")].find(e=>e.id===frag);txt=el?el.textContent:""}}catch{}
+function bkJump(ci,frag){BK.back={ci:BK.ci,off:BK.pbase+bkFirstOffset()};bkGoto(ci,{frag:frag||""});const b=$("#bkBack");b.classList.add("on");clearTimeout(BK.backT);BK.backT=setTimeout(()=>b.classList.remove("on"),9000)}
+async function bkShowNote(ci,frag){let txt="";try{txt=epIdText(await epSplit(BK.book,ci),frag)}catch{}
   txt=txt.replace(/\s+/g," ").trim();if(!txt)return false;const n=$("#bkNote");n.innerHTML=`<div class="bknt">${esc(txt.slice(0,900))}</div><div class="bkna"><button class="btn ghost" data-nx>Fermer</button><button class="btn" data-ng>Aller à la note</button></div>`;n._t={ci,frag};n.classList.add("on");return true}
 
 /* --- panneaux : sommaire, repères, recherche, réglages du texte --- */
@@ -2162,14 +2189,16 @@ function bkSheetHtml(){const S=BK.S,seg=(k,opts)=>`<div class="seg">${opts.map((
   <div class="bkrowc"><label>Animation</label>${seg("anim",[["slide","Glisser"],["fade","Fondu"],["none","Aucune"]])}</div>
   <div class="bkrowc inl"><label>Texte justifié</label>${sw("just",S.just)}</div>
   <div class="bkrowc inl"><label>Double page en paysage</label>${sw("spread",S.spread)}</div>
-  <div class="bkrowc"><label>Assombrir l’écran</label><input class="rng" id="bkDimR" type="range" min="0" max="70" step="1" value="${S.dim||0}"></div>`}
+  <div class="bkrowc"><label>Assombrir l’écran</label><input class="rng" id="bkDimR" type="range" min="0" max="70" step="1" value="${S.dim||0}"></div>
+  <div class="bkrowc"><button class="btn ghost" data-diag>Copier le diagnostic du livre</button></div>`}
+function bkDiag(){const bk=BK.book,sp=bk.spine[BK.ci]||{};return`Livre : ${bk.title} (${bk.author||"—"})\nFichier ${BK.ci+1}/${bk.spine.length} : ${sp.href}\nPartie ${BK.part+1}/${BK.parts} · page ${BK.page+1}/${BK.pages} · texte ${BK.len} car. (fichier : ${BK.flen})\nMode ${BK.S.mode} · police ${bkFs()} px · écran ${BK.m.W}×${BK.m.H} · double page ${BK.m.spread}\nDernière erreur : ${BK.err||"aucune"}\n${navigator.userAgent}`}
 function bkSet(p){const keys=Object.keys(p);Object.assign(BK.S,p);bkSaveS();
   if(keys.includes("t")||keys.includes("dim")){bkSetTheme()}
   if(keys.includes("mode")){if(BK.doc){const off=bkFirstOffset();bkLoad(BK.ci,{off})}}
   else if(keys.some(k=>["fs","ff","lh","m","just","spread"].includes(k)))bkRelayout();
   else if(keys.some(k=>["t","anim"].includes(k))){bkApply();bkUi()}
   if(BK.layer==="sheet"&&!keys.includes("dim")&&!keys.includes("fs")){const s=$("#bkSheet");s.innerHTML=bkSheetHtml()}}
-$("#bkSheet").addEventListener("click",e=>{let t;if(t=e.target.closest("[data-set]")){let v=t.dataset.v;const k=t.dataset.set;if(["lh","m"].includes(k))v=+v;bkSet({[k]:v});return}
+$("#bkSheet").addEventListener("click",e=>{let t;if(e.target.closest("[data-diag]")){const d=bkDiag();(navigator.clipboard?navigator.clipboard.writeText(d):Promise.reject()).then(()=>toast("Diagnostic copié"),()=>toast(d.split("\n")[1]));return}if(t=e.target.closest("[data-set]")){let v=t.dataset.v;const k=t.dataset.set;if(["lh","m"].includes(k))v=+v;bkSet({[k]:v});return}
   if(t=e.target.closest("[data-sw]")){bkSet({[t.dataset.sw]:!BK.S[t.dataset.sw]});return}
   if(t=e.target.closest("[data-fs]")){const v=Math.max(14,Math.min(34,bkFs()+ +t.dataset.fs));bkSet({fs:v});const r=$("#bkFs");if(r){r.value=v;pct(r)}}});
 $("#bkSheet").addEventListener("input",e=>{if(e.target.id==="bkFs"){pct(e.target);clearTimeout(BK.fsT);const v=+e.target.value;BK.fsT=setTimeout(()=>bkSet({fs:v}),90)}else if(e.target.id==="bkDimR"){pct(e.target);bkSet({dim:+e.target.value})}});
@@ -2184,14 +2213,14 @@ async function openBook(it){if(BK.open)return;BK.open=true;BK.it=it;BK.book=null
   if(card&&!MQ_OFF()){const fl=bkFlyEl(card.r,card.c);void fl.offsetWidth;requestAnimationFrame(()=>Object.assign(fl.style,{left:"0px",top:"0px",width:innerWidth+"px",height:innerHeight+"px",borderRadius:"0px"}));
     setTimeout(()=>el.classList.add("show"),BK_FLY*.45);setTimeout(()=>{fl.style.opacity="0"},BK_FLY+60);setTimeout(()=>fl.remove(),BK_FLY+320)}
   else{void el.offsetWidth;requestAnimationFrame(()=>el.classList.add("show"))}
-  try{BK.book=await readEpub(it.blob)}catch(e){if(!BK.open)return;toast(e&&e.drm?"Livre protégé (DRM) : non lisible":"Impossible d’ouvrir ce livre");history.back();return}
+  try{BK.book=await readEpub(it.blob)}catch(e){if(!BK.open)return;toast(e&&e.drm?"Livre protégé (DRM) : non lisible":(e&&/navigateur/.test(e.message||"")?e.message:"Impossible d’ouvrir ce livre"));history.back();return}
   if(!BK.open)return;const bk=BK.book;$("#bkT").textContent=bk.title||titleOf(it);$("#bkA").textContent=bk.author||"";BK.ann=bkGetAnn();BK.ci=0;
   const st=bookState(it.id);await bkLoad(st?st.ci:0,st?{off:st.off}:{});
   try{if(navigator.wakeLock)navigator.wakeLock.request("screen").then(l=>{BK.wl=l}).catch(()=>{})}catch{}
   clearTimeout(BK.chT);BK.chT=setTimeout(()=>{if(BK.open&&!BK.layer)bkChrome(false)},2600)}
 function bkCleanup(){const el=$("#bk");el.classList.remove("on","chrome","show");el.setAttribute("aria-hidden","true");try{$("#bkF").srcdoc=""}catch{};BK.urls.forEach(u=>URL.revokeObjectURL(u));BK.urls=[];BK.book=null;BK.doc=null;BK.rd=null}
-function bkHide(){if(!BK.open)return;BK.open=false;bkLayerHide();bkMeta(false);bkCleanup()}
-function bkClose(){if(!BK.open)return;clearTimeout(bkSvT);bkSave();bkSelHide();try{BK.wl&&BK.wl.release()}catch{}
+function bkHide(){if(!BK.open)return;BK.open=false;BK.tok++;bkLayerHide();bkMeta(false);bkCleanup()}
+function bkClose(){if(!BK.open)return;clearTimeout(bkSvT);bkSave();BK.tok++;bkSelHide();try{BK.wl&&BK.wl.release()}catch{}
   const el=$("#bk"),it=BK.it,card=it&&!MQ_OFF()?bkCardCover(it.id):null,wasLib=$("#v-lib").classList.contains("on");BK.open=false;bkLayerHide();bkMeta(false);$("#bkNote").classList.remove("on");$("#bkBack").classList.remove("on");
   if(card){const fl=bkFlyEl({left:0,top:0,width:innerWidth,height:innerHeight},card.c);fl.style.borderRadius="0px";fl.style.opacity="0";fl.style.transition="none";void fl.offsetWidth;fl.style.transition="";
     requestAnimationFrame(()=>{fl.style.opacity="1";el.classList.remove("show");requestAnimationFrame(()=>Object.assign(fl.style,{left:card.r.left+"px",top:card.r.top+"px",width:card.r.width+"px",height:card.r.height+"px",borderRadius:"6px 10px 10px 6px"}))});
@@ -2199,6 +2228,7 @@ function bkClose(){if(!BK.open)return;clearTimeout(bkSvT);bkSave();bkSelHide();t
     setTimeout(()=>{if(wasLib&&$("#v-lib").classList.contains("on"))renderLib();renderShelf()},BK_FLY+300)}
   else{el.classList.remove("show");setTimeout(()=>{if(!BK.open)bkCleanup()},400);if(wasLib)setTimeout(()=>{if($("#v-lib").classList.contains("on"))renderLib()},420);renderShelf()}}
 $("#bkX").onclick=()=>history.back();
+$("#bkPrevB").onclick=()=>{bkPrev();bkChrome(true)};$("#bkNextB").onclick=()=>{bkNext();bkChrome(true)};
 $("#bkSearch").onclick=()=>bkPanelRender("search");$("#bkToc").onclick=()=>bkPanelRender("toc");
 $("#bkAa").onclick=()=>bkLayerOpen("sheet",bkSheetHtml());$("#bkMark").onclick=bkToggleMark;
 $("#bkScrim").onclick=()=>history.back();
