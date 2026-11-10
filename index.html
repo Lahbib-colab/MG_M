@@ -563,7 +563,13 @@ html[data-eco] .bk,html[data-motion=reduce] .bk{transition-duration:.01s}html[da
 .bk[data-t=night]{--bg:#1b1d24;--fg:#d8dae0;--acc:#7fb0ff}
 .bk[data-t=black]{--bg:#000;--fg:#b9bcc6;--acc:#6ea4ff;--bar:rgba(8,8,10,.97);--line:rgba(255,255,255,.1);--mut:#6f7380}
 .bkstage{position:absolute;inset:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
-#bkF{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent;transition:opacity .25s}
+.bkstage{perspective:1700px;-webkit-perspective:1700px}
+#bkF,#bkF2{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent;transform-origin:left center;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+#bkF{z-index:1;transition:opacity .25s}#bkF2{z-index:0;opacity:0;pointer-events:none}
+.bksh{position:absolute;inset:0;z-index:2;pointer-events:none;opacity:0}
+.bkgest{position:absolute;inset:0;z-index:5;display:none;touch-action:none;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+@media (pointer:coarse){.bkgest{display:block}}
+#bk[data-mode=scroll] .bkgest{display:none}
 .bkgut{position:absolute;left:50%;top:9%;bottom:9%;width:1px;background:linear-gradient(transparent,var(--line),transparent);pointer-events:none;display:none}
 .bkdim{position:absolute;inset:0;background:#000;pointer-events:none;opacity:0;z-index:60}
 .bkmini{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 12px);display:flex;justify-content:space-between;gap:16px;padding:0 max(24px,env(safe-area-inset-left));font-size:12px;color:var(--mut);pointer-events:none;transition:opacity .25s;z-index:5;white-space:nowrap}
@@ -696,7 +702,7 @@ html[data-eco] .bktop,html[data-eco] .bkbot,html[data-eco] .bksheet,html[data-ec
 <audio id="aud" preload="metadata"></audio>
 <input type="file" id="jaqIn" accept="image/*" hidden><input type="file" id="subIn" accept=".srt,.vtt,text/vtt,application/x-subrip,text/plain" multiple hidden><input type="file" id="appIco" accept="image/*" hidden><input type="file" id="fileIn" multiple hidden><input type="file" id="wallIn" accept="image/*" hidden><input type="file" id="m3uIn" accept=".m3u,.m3u8,text/plain" hidden>
 <div id="bk" class="bk" data-t="night" aria-hidden="true">
-  <div class="bkstage"><iframe id="bkF" title="Livre" sandbox="allow-same-origin" tabindex="-1"></iframe></div>
+  <div class="bkstage"><iframe id="bkF2" title="" sandbox="allow-same-origin" tabindex="-1" aria-hidden="true"></iframe><iframe id="bkF" title="Livre" sandbox="allow-same-origin" tabindex="-1"></iframe><div class="bksh" id="bkSh"></div><div class="bkgest" id="bkGest"></div></div>
   <div class="bkgut" id="bkGut"></div>
   <div class="bkmini" id="bkMini"><span id="bkMiniL"></span><span id="bkMiniR"></span></div>
   <header class="bktop" id="bkTop">
@@ -712,7 +718,7 @@ html[data-eco] .bktop,html[data-eco] .bkbot,html[data-eco] .bksheet,html[data-ec
     <input class="rng" id="bkSeek" type="range" min="0" max="1000" value="0" aria-label="Position dans le livre">
     <div class="bkst"><span id="bkPg"></span><span id="bkPct"></span><span id="bkLeft"></span></div>
   </footer>
-  <div class="bksel" id="bkSel"><button class="hc" data-hc="0" style="background:#f5c400" aria-label="Jaune"></button><button class="hc" data-hc="1" style="background:#3fbf6e" aria-label="Vert"></button><button class="hc" data-hc="2" style="background:#4a90f0" aria-label="Bleu"></button><button class="hc" data-hc="3" style="background:#ec5f9a" aria-label="Rose"></button><button data-sa="note" aria-label="Ajouter une note"><svg class="ico" viewBox="0 0 24 24" style="font-size:22px"><path d="M5 4h14v12H9l-4 4z"/></svg></button><button data-sa="copy" aria-label="Copier"><svg class="ico" viewBox="0 0 24 24" style="font-size:22px"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button></div>
+  <div class="bksel" id="bkSel"><button class="hc" data-hc="0" style="background:#f5c400" aria-label="Jaune"></button><button class="hc" data-hc="1" style="background:#3fbf6e" aria-label="Vert"></button><button class="hc" data-hc="2" style="background:#4a90f0" aria-label="Bleu"></button><button class="hc" data-hc="3" style="background:#ec5f9a" aria-label="Rose"></button><button data-sa="eb" aria-label="Étendre à gauche" style="font-size:22px">‹</button><button data-sa="ef" aria-label="Étendre à droite" style="font-size:22px">›</button><button data-sa="es" aria-label="Jusqu’à la fin de la phrase" style="font-size:15px;font-weight:700">¶</button><button data-sa="note" aria-label="Ajouter une note"><svg class="ico" viewBox="0 0 24 24" style="font-size:22px"><path d="M5 4h14v12H9l-4 4z"/></svg></button><button data-sa="copy" aria-label="Copier"><svg class="ico" viewBox="0 0 24 24" style="font-size:22px"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button></div>
   <div class="bkback" id="bkBack">‹ Retour à ma page</div>
   <div class="bknote" id="bkNote"></div>
   <div class="bkscrim" id="bkScrim"></div>
@@ -1567,7 +1573,7 @@ new MutationObserver(ms=>{for(const m of ms){const t=m.type==="characterData"?m.
 mqScan(document);window.MQ_READY=true;
 
 /* ---------- Réglages ---------- */
-const APP_VER="4.0",APP_BUILD=27;
+const APP_VER="4.0",APP_BUILD=28;
 /* ---------- Mise à jour de l'application ---------- */
 let UPD_T=0,updating=false;
 function showUpdateBar(remote){if($("#updbar"))return;const b=document.createElement("div");b.id="updbar";b.className="updbar";
@@ -1937,9 +1943,10 @@ const BK_THEMES={paper:{n:"Papier",bg:"#f5f0e6",fg:"#2a251d",acc:"#a8602a",line:
   sepia:{n:"Sépia",bg:"#ead9b9",fg:"#45311d",acc:"#9a5420",line:"rgba(70,40,10,.18)",dark:0},night:{n:"Nuit",bg:"#1b1d24",fg:"#d8dae0",acc:"#7fb0ff",line:"rgba(255,255,255,.12)",dark:1},black:{n:"Noir",bg:"#000000",fg:"#b9bcc6",acc:"#6ea4ff",line:"rgba(255,255,255,.1)",dark:1}};
 const BK_FONTS={serif:'"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Noto Serif","DejaVu Serif",serif',sans:'-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"DejaVu Sans",sans-serif',pub:"inherit"};
 const BKCOL=["#f5c400","#3fbf6e","#4a90f0","#ec5f9a"];
-const BKS0={t:"auto",fs:0,ff:"serif",lh:1.55,m:1,just:false,mode:"paged",spread:true,anim:"slide",dim:0};
+const BKS0={t:"auto",fs:0,ff:"serif",lh:1.55,m:1,just:false,mode:"paged",spread:true,anim:"real",dim:0,animV:2};
 const BK={open:false,S:{...BKS0,...LS.get("mg.rd",{})},it:null,book:null,ci:0,page:0,pages:1,tok:0,srTok:0,layer:null,chrome:true,urls:[],ann:{bm:[],hl:[]},doc:null,rd:null,tn:[],len:0,m:null,back:null,sr:{q:"",res:[],busy:false,prog:0}};
 const bkSaveS=()=>LS.set("mg.rd",BK.S);
+if(BK.S.animV!==2){BK.S.anim="real";BK.S.animV=2;bkSaveS()}
 const bkTheme=()=>BK.S.t==="auto"?(document.documentElement.dataset.theme==="light"?"paper":"night"):BK.S.t;
 const bkFs=()=>BK.S.fs||(innerWidth<700?18:21);
 const bkSv=(p,w=24)=>`<svg class="ico" viewBox="0 0 24 24" style="font-size:${w}px">${p}</svg>`;
@@ -1963,7 +1970,7 @@ html,body{margin:0!important;padding:0!important;max-width:none!important;width:
 html{touch-action:manipulation}@media (hover:none){#rd,#rd *{cursor:pointer}}
 body{color:${T.fg}!important;${pub?"":`font-family:${ff};`}font-size:${bkFs()}px!important;line-height:${S.lh}!important;text-align:${S.just?"justify":"left"};hyphens:auto;-webkit-hyphens:auto;overflow-wrap:break-word;word-break:normal}
 ${layout}
-#rd{transition:transform ${S.anim==="slide"?".34s cubic-bezier(.22,.7,.2,1)":"0s"},opacity .16s}
+#rd{transition:opacity .16s}
 #rd,#rd *{color:${T.fg}!important;background:none!important;background-color:transparent!important;text-shadow:none!important;box-shadow:none!important;max-width:100%!important;word-break:normal!important;line-height:inherit!important}
 ${pub?"":`#rd *:not(pre):not(code):not(kbd):not(samp):not(tt){font-family:inherit!important}`}
 #rd *{break-before:auto!important;break-after:auto!important;min-height:0!important}
@@ -1979,11 +1986,11 @@ ${pub?"":`#rd *:not(pre):not(code):not(kbd):not(samp):not(tt){font-family:inheri
 #rd mark.c0{background-color:${hl[0]}!important}#rd mark.c1{background-color:${hl[1]}!important}#rd mark.c2{background-color:${hl[2]}!important}#rd mark.c3{background-color:${hl[3]}!important}
 #rd mark.hn{border-bottom:2px dotted ${T.acc}}#rd mark.fl{background-color:${T.acc}55!important;border-radius:3px}
 ::selection{background:${T.acc}55}`}
-function bkApply(){if(!BK.doc)return;BK.m=bkMetrics();BK.doc.getElementById("base").textContent=bkCss(BK.m);$("#bkGut").style.display=BK.m.spread?"block":"none"}
+function bkApply(){if(!BK.doc)return;BK.m=bkMetrics();BK.doc.getElementById("base").textContent=bkCss(BK.m);$("#bkGut").style.display=BK.m.spread?"block":"none";$("#bk").dataset.mode=BK.S.mode}
 function bkMeta(on){const m=document.querySelector('meta[name="theme-color"]');if(!m)return;if(on){if(BK.tc==null)BK.tc=m.content;m.content=BK_THEMES[bkTheme()].bg}else if(BK.tc!=null){m.content=BK.tc;BK.tc=null}}
 function bkSetTheme(){$("#bk").dataset.t=bkTheme();$("#bkDim").style.opacity=(BK.S.dim||0)/100;if(BK.open)bkMeta(true)}
-function bkCount(){const m=BK.m;if(!m.paged){BK.pages=1;return}BK.pages=Math.max(1,Math.ceil((BK.rd.scrollWidth+2*m.M-2)/m.W))}
-function bkIndex(){const w=BK.doc.createTreeWalker(BK.rd,NodeFilter.SHOW_TEXT),a=[];let n,s=0;while(n=w.nextNode()){a.push({n,s});s+=n.nodeValue.length}BK.tn=a;BK.len=s}
+function bkCount(){const m=BK.m;if(!m.paged){BK.pages=1;BK.doc.body.style.minWidth="";return}BK.pages=Math.max(1,Math.ceil((BK.rd.scrollWidth+2*m.M-2)/m.W));BK.doc.body.style.minWidth=(BK.pages*m.W)+"px"}
+function bkIndex(){const w=BK.doc.createTreeWalker(BK.rd,NodeFilter.SHOW_TEXT),a=[];let n,s=0;while(n=w.nextNode()){a.push({n,s});s+=n.nodeValue.length}BK.tn=a;BK.len=s;bkPrepSoon()}
 
 /* --- positions : on retient le premier caractère visible (indépendant de la taille de police) --- */
 function bkMetric(rect){if(BK.m.paged)return rect.left-BK.rd.getBoundingClientRect().left;return rect.top+BK.doc.scrollingElement.scrollTop}
@@ -2001,10 +2008,13 @@ const bkPageOfEl=el=>bkPageOfMetric(bkMetric(el.getBoundingClientRect()));
 function bkScrollTo(y){BK.doc.scrollingElement.scrollTop=Math.max(0,y-40)}
 
 /* --- affichage d'une page / d'un chapitre --- */
-function bkShow(p,opt={}){const m=BK.m,rd=BK.rd;if(!rd||!m.paged)return;p=Math.max(0,Math.min(BK.pages-1,p));BK.page=p;const tf=`translate3d(${-p*m.W}px,0,0)`;
-  if(opt.instant||BK.S.anim==="none"){rd.style.transition="none";rd.style.transform=tf;rd.getBoundingClientRect();rd.style.transition=""}
-  else if(BK.S.anim==="fade"){rd.style.transition="opacity .12s";rd.style.opacity=0;setTimeout(()=>{if(BK.rd!==rd)return;rd.style.transition="none";rd.style.transform=tf;rd.getBoundingClientRect();rd.style.transition="opacity .18s";rd.style.opacity=1},120)}
-  else{rd.style.willChange="transform";rd.style.transform=tf;clearTimeout(BK.wcT);BK.wcT=setTimeout(()=>{if(BK.rd===rd)rd.style.willChange=""},520)}
+const bkSetScroll=x=>{const w=BK.doc&&BK.doc.defaultView;if(w)w.scrollTo(x,0)};
+function bkScrollAnim(to,dur){const w=BK.doc.defaultView,from=w.pageXOffset,t0=performance.now(),my=++BK.animId;BK.animating=true;
+  const step=now=>{if(my!==BK.animId||!BK.doc)return;const k=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-k,3);w.scrollTo(from+(to-from)*e,0);if(k<1)requestAnimationFrame(step);else BK.animating=false};requestAnimationFrame(step)}
+function bkShow(p,opt={}){const m=BK.m,rd=BK.rd;if(!rd||!m.paged)return;p=Math.max(0,Math.min(BK.pages-1,p));BK.page=p;if(BK.fdir)bkFlipReset();const x=p*m.W;BK.animId=(BK.animId||0)+1;BK.animating=false;
+  if(opt.instant||BK.S.anim==="none")bkSetScroll(x);
+  else if(BK.S.anim==="fade"){rd.style.opacity=0;setTimeout(()=>{if(BK.rd!==rd)return;bkSetScroll(x);rd.style.opacity=1},120)}
+  else bkScrollAnim(x,300);
   bkSelHide();clearTimeout(BK.uiT);BK.uiT=setTimeout(()=>{bkUi();bkSaveSoon()},70)}
 function bkPlace(o){let p=0;
   if(o.last)p=BK.pages-1;
@@ -2049,13 +2059,57 @@ function bkChromeHide(){if(BK.chrome&&!BK.layer)bkChrome(false)}
 function bkChrome(v){BK.chrome=v==null?!BK.chrome:v;$("#bk").classList.toggle("chrome",BK.chrome)}
 const bkErr=e=>{BK.err=String(e&&e.message||e);toast("Erreur de lecture : "+BK.err.slice(0,80))};
 function bkNext(){if(!BK.doc)return;try{const bk=BK.book,more=()=>BK.part<BK.parts-1,nextCh=()=>BK.ci<bk.spine.length-1;
-  if(BK.m.paged){if(BK.page<BK.pages-1)bkShow(BK.page+1);else if(more())bkLoad(BK.ci,{part:BK.part+1});else if(nextCh())bkLoad(BK.ci+1,{dir:1});else{toast("Fin du livre");bkShow(BK.page)}}
+  if(BK.m.paged){if(BK.fdir)bkFlipDone(BK.fdir===1);if(BK.page<BK.pages-1){if(BK.S.anim==="real"&&bkFlipCan(1)&&!BK.animating){bkFlipSetup(1);bkFlipFinish(true)}else bkShow(BK.page+1)}else if(more())bkLoad(BK.ci,{part:BK.part+1});else if(nextCh())bkLoad(BK.ci+1,{dir:1});else{toast("Fin du livre");bkShow(BK.page)}}
   else{const se=BK.doc.scrollingElement;if(se.scrollTop+se.clientHeight>=se.scrollHeight-4){if(more())bkLoad(BK.ci,{part:BK.part+1});else if(nextCh())bkLoad(BK.ci+1,{dir:1});else toast("Fin du livre")}else se.scrollBy({top:se.clientHeight*.86,behavior:"smooth"})}}catch(e){bkErr(e)}
   bkChromeHide()}
 function bkPrev(){if(!BK.doc)return;try{
-  if(BK.m.paged){if(BK.page>0)bkShow(BK.page-1);else if(BK.part>0)bkLoad(BK.ci,{part:BK.part-1,last:true});else if(BK.ci>0)bkLoad(BK.ci-1,{lastPart:true,last:true,dir:-1});else bkShow(BK.page)}
+  if(BK.m.paged){if(BK.fdir)bkFlipDone(BK.fdir===-1);if(BK.page>0){if(BK.S.anim==="real"&&bkFlipCan(-1)&&!BK.animating){bkFlipSetup(-1);bkFlipFinish(true)}else bkShow(BK.page-1)}else if(BK.part>0)bkLoad(BK.ci,{part:BK.part-1,last:true});else if(BK.ci>0)bkLoad(BK.ci-1,{lastPart:true,last:true,dir:-1});else bkShow(BK.page)}
   else{const se=BK.doc.scrollingElement;if(se.scrollTop<=2){if(BK.part>0)bkLoad(BK.ci,{part:BK.part-1,last:true});else if(BK.ci>0)bkLoad(BK.ci-1,{lastPart:true,last:true,dir:-1})}else se.scrollBy({top:-se.clientHeight*.86,behavior:"smooth"})}}catch(e){bkErr(e)}
   bkChromeHide()}
+/* Effet « page qui se tourne » : une copie du chapitre (second cadre) montre la page voisine pendant que la page courante pivote autour de la reliure. */
+function bkPrepSoon(){clearTimeout(BK.prepT);BK.prepOk=false;if(BK.S.anim!=="real"||!BK.doc)return;BK.prepT=setTimeout(bkPrep,420)}
+function bkPrep(){if(!BK.doc||BK.S.anim!=="real"||!BK.open)return;const f2=$("#bkF2"),tok=BK.tok,html="<!doctype html>"+BK.doc.documentElement.outerHTML;
+  f2.onload=()=>{if(tok!==BK.tok||!BK.open)return;BK.d2=f2.contentDocument;BK.prepOk=!!(BK.d2&&BK.d2.getElementById("rd"))};f2.srcdoc=html}
+const bkFlipCan=dir=>{const t=BK.page+dir;return!!(BK.prepOk&&BK.d2&&BK.m.paged&&t>=0&&t<BK.pages&&!BK.fdir)};
+function bkFlipSetup(dir){const f1=$("#bkF"),f2=$("#bkF2");BK.d2.defaultView.scrollTo((BK.page+dir)*BK.m.W,0);BK.fdir=dir;BK.fk=0;BK.fe=dir>0?f1:f2;BK.fu=dir>0?f2:f1;
+  BK.fe.style.zIndex=3;BK.fu.style.zIndex=1;f2.style.opacity=1;BK.fe.style.willChange="transform";bkFlipProgress(0)}
+function bkFlipProgress(k){if(!BK.fdir)return;BK.fk=k;const ang=BK.fdir>0?-112*k:-112*(1-k),rad=ang*Math.PI/180,W=BK.m.W,edge=Math.max(0,W*Math.cos(rad)),sh=$("#bkSh");
+  BK.fe.style.transform="rotateY("+ang.toFixed(2)+"deg)";BK.fe.style.filter="brightness("+(1-.38*Math.abs(Math.sin(rad))).toFixed(3)+")";
+  sh.style.background="linear-gradient(90deg,rgba(0,0,0,0) "+Math.max(0,edge-24).toFixed(0)+"px,rgba(0,0,0,.42) "+edge.toFixed(0)+"px,rgba(0,0,0,0) "+(edge+150).toFixed(0)+"px)";sh.style.opacity=1}
+function bkFlipFinish(go){const to=go?1:0,k0=BK.fk,dur=Math.max(140,Math.abs(to-k0)*470),t0=performance.now(),my=++BK.animId;BK.animating=true;
+  const step=now=>{if(my!==BK.animId||!BK.fdir)return;const t=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-t,3);bkFlipProgress(k0+(to-k0)*e);if(t<1)requestAnimationFrame(step);else bkFlipDone(go)};requestAnimationFrame(step)}
+function bkFlipDone(go){const dir=BK.fdir;if(go){BK.page+=dir;bkSetScroll(BK.page*BK.m.W)}bkFlipReset();BK.animating=false;bkSelHide();bkUi();bkSaveSoon()}
+function bkFlipReset(){for(const f of[$("#bkF"),$("#bkF2")]){f.style.transform="";f.style.filter="";f.style.zIndex="";f.style.willChange=""}$("#bkF2").style.opacity=0;$("#bkSh").style.opacity=0;BK.fdir=0}
+/* --- couche de gestes pour les écrans tactiles : appuis, glissements et appui long sont lus dans la page principale (fiable sur iOS) --- */
+const bkG=$("#bkGest");let bkS=null;
+const bkCaret=(x,y)=>{const d=BK.doc;if(!d)return null;if(d.caretRangeFromPoint){const r=d.caretRangeFromPoint(x,y);return r?{node:r.startContainer,off:r.startOffset}:null}if(d.caretPositionFromPoint){const c=d.caretPositionFromPoint(x,y);return c?{node:c.offsetNode,off:c.offset}:null}return null};
+function bkLongPress(cx,cy){const doc=BK.doc;if(!doc||!BK.m.paged)return;const r=$("#bkF").getBoundingClientRect(),c=bkCaret(cx-r.left,cy-r.top);if(!c||!BK.rd.contains(c.node))return;
+  const s=doc.getSelection(),rg=doc.createRange();rg.setStart(c.node,c.off);rg.collapse(true);s.removeAllRanges();s.addRange(rg);try{s.modify("move","backward","word");s.modify("extend","forward","word")}catch{}haptic("sel");bkSelUpdate()}
+function bkSelDrag(cx,cy){const r=$("#bkF").getBoundingClientRect(),c=bkCaret(cx-r.left,cy-r.top);if(c&&BK.rd.contains(c.node)){try{BK.doc.getSelection().extend(c.node,c.off)}catch{}}}
+function bkSelExtend(k){const s=BK.doc&&BK.doc.getSelection();if(!s||!s.rangeCount)return;try{if(k==="eb")s.modify("extend","backward","word");else if(k==="ef")s.modify("extend","forward","word");else s.modify("extend","forward","sentenceboundary")}catch{}bkSelUpdate()}
+function bkTapAt(cx,cy){const doc=BK.doc;if(!doc)return;const r=$("#bkF").getBoundingClientRect(),x=cx-r.left,y=cy-r.top;
+  if(bkHasSel()){doc.getSelection().removeAllRanges();bkSelHide();return}$("#bkNote").classList.remove("on");
+  const el=doc.elementFromPoint(x,y);if(el&&el.closest){const a=el.closest("a[href]");if(a&&(a.classList.contains("noteref")||(a.textContent||"").trim().length>0))return bkLink(a);const mk=el.closest("mark.hl");if(mk&&mk.dataset.id)return bkOpenHl(mk.dataset.id)}
+  if(BK.layer){history.back();return}const k=x/r.width;if(k<.27)bkPrev();else if(k>.73)bkNext();else bkChrome()}
+function bkDragStart(){BK.dragging=true;BK.animId=(BK.animId||0)+1;BK.animating=false;BK.dragDir=0;bkSelHide()}
+function bkDragMove(dx){const W=BK.m.W;
+  if(BK.S.anim==="real"&&BK.prepOk){const dir=dx<0?1:-1;if(dir!==BK.dragDir){if(BK.fdir)bkFlipReset();BK.dragDir=bkFlipCan(dir)?dir:0;if(BK.dragDir)bkFlipSetup(dir)}if(BK.dragDir){bkFlipProgress(Math.min(1,Math.abs(dx)/(W*.8)));return}}
+  bkSetScroll(BK.page*W-dx)}
+function bkDragEnd(dx,dt){const W=BK.m.W,fast=Math.abs(dx)/Math.max(dt,1)>.4,next=dx<-W*.15||(fast&&dx<-28),prev=dx>W*.15||(fast&&dx>28);BK.dragging=false;
+  if(BK.fdir){bkFlipFinish(BK.fdir>0?next:prev);BK.dragDir=0;return}
+  if(next)bkNext();else if(prev)bkPrev();else bkScrollAnim(BK.page*W,200)}
+bkG.addEventListener("pointerdown",e=>{if(!BK.doc||BK.layer||(e.pointerType==="mouse"&&e.button>0))return;try{bkG.setPointerCapture(e.pointerId)}catch{}
+  const s0=bkS={id:e.pointerId,x:e.clientX,y:e.clientY,t:Date.now(),dx:0,dy:0,drag:false,long:false};s0.lt=setTimeout(()=>{if(bkS===s0&&!s0.drag&&Math.abs(s0.dx)<8&&Math.abs(s0.dy)<8){s0.long=true;bkLongPress(s0.x,s0.y)}},430)});
+bkG.addEventListener("pointermove",e=>{const s0=bkS;if(!s0||e.pointerId!==s0.id)return;const dx=e.clientX-s0.x,dy=e.clientY-s0.y;s0.dx=dx;s0.dy=dy;
+  if(s0.long){bkSelDrag(e.clientX,e.clientY);return}
+  if(!s0.drag&&BK.m&&BK.m.paged&&Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.3){s0.drag=true;clearTimeout(s0.lt);bkDragStart()}
+  if(s0.drag)bkDragMove(dx)});
+const bkGEnd=e=>{const s0=bkS;if(!s0||e.pointerId!==s0.id)return;bkS=null;clearTimeout(s0.lt);
+  if(s0.long){bkSelUpdate();return}
+  if(s0.drag){if(e.type==="pointerup")bkDragEnd(s0.dx,Date.now()-s0.t);else{BK.dragging=false;if(BK.fdir)bkFlipFinish(false);else bkScrollAnim(BK.page*BK.m.W,200)}return}
+  if(e.type==="pointerup"&&Math.abs(s0.dx)<10&&Math.abs(s0.dy)<10&&Date.now()-s0.t<500)bkTapAt(e.clientX,e.clientY)};
+bkG.addEventListener("pointerup",bkGEnd);bkG.addEventListener("pointercancel",bkGEnd);
+bkG.addEventListener("wheel",e=>{if(!BK.doc||!BK.m.paged)return;e.preventDefault();const d=Math.abs(e.deltaY)>Math.abs(e.deltaX)?e.deltaY:e.deltaX;if(Math.abs(d)<8||Date.now()-(BK.wt||0)<380)return;BK.wt=Date.now();d>0?bkNext():bkPrev()},{passive:false});
 function bkPct(){const bk=BK.book;if(!bk||!BK.m)return 0;let acc=0;for(let i=0;i<BK.ci;i++)acc+=bk.spine[i].size;const w=bk.spine[BK.ci].size;let lf=0;
   if(BK.m.paged)lf=BK.pages>1?BK.page/BK.pages:0;else{const se=BK.doc.scrollingElement,mx=se.scrollHeight-se.clientHeight;lf=mx>0?se.scrollTop/mx:0}
   if(BK.ci===bk.spine.length-1&&BK.part>=BK.parts-1&&(BK.m.paged?BK.page>=BK.pages-1:lf>.98))return 1;
@@ -2086,7 +2140,7 @@ function bkSelRange(){const s=BK.doc&&BK.doc.getSelection();if(!s||s.isCollapsed
 function bkSelHide(){$("#bkSel").classList.remove("on")}
 function bkSelUpdate(){const sel=$("#bkSel");if(BK.layer||!BK.doc||!BK.open){sel.classList.remove("on");return}const sr=bkSelRange();if(!sr){sel.classList.remove("on");return}
   const rs=sr.r.getClientRects(),r=rs.length?rs[0]:sr.r.getBoundingClientRect(),fr=$("#bkF").getBoundingClientRect();
-  sel.style.left=Math.max(110,Math.min(innerWidth-110,fr.left+r.left+r.width/2))+"px";sel.style.top=Math.max(70,fr.top+r.top-58)+"px";sel.classList.add("on")}
+  sel.classList.add("on");const w=sel.offsetWidth||260;sel.style.left=Math.max(w/2+8,Math.min(innerWidth-w/2-8,fr.left+r.left+r.width/2))+"px";sel.style.top=Math.max(70,fr.top+r.top-58)+"px"}
 function bkAddHl(c){const sr=bkSelRange();if(!sr)return null;const h={id:"h"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),ci:BK.ci,s:sr.s+BK.pbase,e:sr.e+BK.pbase,c,note:"",text:sr.text.replace(/\s+/g," ").trim().slice(0,260),t:Date.now()};
   BK.ann.hl.push(h);bkSaveAnn();BK.doc.getSelection().removeAllRanges();bkHlWrap(h);bkIndex();bkSelHide();haptic("sel");return h}
 function bkOpenHl(id){const h=BK.ann.hl.find(x=>x.id===id);if(!h)return;let col=h.c|0;
@@ -2101,23 +2155,13 @@ function bkToggleMark(){if(!BK.doc)return;if(bkMarked()){BK.ann.bm=BK.ann.bm.fil
   bkSaveAnn();bkUi();haptic("sel");if(BK.layer==="panel")bkPanelRender()}
 
 /* --- gestes et clavier dans la page --- */
-function bkBind(doc){let st=null,tapped=0;
-  doc.addEventListener("touchstart",e=>{if(e.touches.length!==1){st=null;return}const t=e.touches[0];st={x:t.clientX,y:t.clientY,t:Date.now(),dx:0,drag:false}},{passive:true});
-  doc.addEventListener("touchmove",e=>{if(!st||!BK.m.paged)return;const t=e.touches[0],dx=t.clientX-st.x,dy=t.clientY-st.y;
-    if(!st.drag){if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.4&&!bkHasSel()){st.drag=true;BK.rd.style.transition="none";BK.rd.style.willChange="transform"}else return}
-    st.dx=dx;const last=BK.ci===BK.book.spine.length-1&&BK.page>=BK.pages-1&&dx<0,first=BK.ci===0&&BK.page===0&&dx>0;
-    BK.rd.style.transform=`translate3d(${-BK.page*BK.m.W+(last||first?dx*.22:dx)}px,0,0)`;e.preventDefault()},{passive:false});
-  doc.addEventListener("touchend",e=>{if(!st)return;const t=e.changedTouches[0],dx=t.clientX-st.x,dy=t.clientY-st.y,dt=Date.now()-st.t,s0=st;st=null;
-    if(s0.drag){tapped=Date.now();const W=BK.m.W,fast=Math.abs(dx)/Math.max(dt,1)>.4;BK.rd.style.transition="";
-      if(dx<-W*.15||(fast&&dx<-28))bkNext();else if(dx>W*.15||(fast&&dx>28))bkPrev();else bkShow(BK.page);
-      return}
-    if(Math.abs(dx)<10&&Math.abs(dy)<10&&dt<420&&!bkHasSel()){tapped=Date.now();bkTap({target:e.target,clientX:t.clientX,clientY:t.clientY,preventDefault(){}})}},{passive:true});
-  doc.addEventListener("click",e=>{const a=e.target.closest&&e.target.closest("a");if(a)e.preventDefault();if(Date.now()-tapped<600)return;bkTap(e)});
+function bkBind(doc){
+  doc.addEventListener("click",e=>{const a=e.target.closest&&e.target.closest("a");if(a)e.preventDefault();bkTap(e)});
   doc.addEventListener("keydown",bkKey);
   doc.addEventListener("wheel",e=>{if(!BK.m.paged)return;e.preventDefault();const d=Math.abs(e.deltaY)>Math.abs(e.deltaX)?e.deltaY:e.deltaX;if(Math.abs(d)<8||Date.now()-(BK.wt||0)<380)return;BK.wt=Date.now();d>0?bkNext():bkPrev()},{passive:false});
   doc.addEventListener("selectionchange",()=>{clearTimeout(BK.selT);BK.selT=setTimeout(bkSelUpdate,200)});
   doc.addEventListener("contextmenu",e=>{if(!bkHasSel())e.preventDefault()});
-  doc.addEventListener("scroll",()=>{if(BK.m&&BK.m.paged){const se=doc.scrollingElement;if(se.scrollLeft||se.scrollTop){se.scrollLeft=0;se.scrollTop=0}}},true)}
+  doc.addEventListener("scroll",()=>{if(BK.m&&BK.m.paged&&!BK.dragging&&!BK.animating&&!BK.fdir){const x=BK.page*BK.m.W;if(Math.abs(doc.defaultView.pageXOffset-x)>1)doc.defaultView.scrollTo(x,0)}},true)}
 function bkTap(e){if(bkHasSel())return;const a=e.target.closest&&e.target.closest("a[href]");if(a&&(a.classList.contains("noteref")||(a.textContent||"").trim().length>0)){e.preventDefault();return bkLink(a)}
   const mk=e.target.closest&&e.target.closest("mark.hl");if(mk&&mk.dataset.id)return bkOpenHl(mk.dataset.id);
   if(BK.layer){history.back();return}$("#bkNote").classList.remove("on");
@@ -2186,7 +2230,7 @@ function bkSheetHtml(){const S=BK.S,seg=(k,opts)=>`<div class="seg">${opts.map((
   <div class="bkrowc"><label>Interligne</label>${seg("lh",[[1.35,"Serré"],[1.55,"Normal"],[1.8,"Aéré"]])}</div>
   <div class="bkrowc"><label>Marges</label>${seg("m",[[0,"Étroites"],[1,"Normales"],[2,"Larges"]])}</div>
   <div class="bkrowc"><label>Affichage</label>${seg("mode",[["paged","Pages"],["scroll","Défilement"]])}</div>
-  <div class="bkrowc"><label>Animation</label>${seg("anim",[["slide","Glisser"],["fade","Fondu"],["none","Aucune"]])}</div>
+  <div class="bkrowc"><label>Animation</label>${seg("anim",[["real","Réaliste"],["slide","Glisser"],["fade","Fondu"],["none","Aucune"]])}</div>
   <div class="bkrowc inl"><label>Texte justifié</label>${sw("just",S.just)}</div>
   <div class="bkrowc inl"><label>Double page en paysage</label>${sw("spread",S.spread)}</div>
   <div class="bkrowc"><label>Assombrir l’écran</label><input class="rng" id="bkDimR" type="range" min="0" max="70" step="1" value="${S.dim||0}"></div>
@@ -2197,6 +2241,7 @@ function bkSet(p){const keys=Object.keys(p);Object.assign(BK.S,p);bkSaveS();
   if(keys.includes("mode")){if(BK.doc){const off=bkFirstOffset();bkLoad(BK.ci,{off})}}
   else if(keys.some(k=>["fs","ff","lh","m","just","spread"].includes(k)))bkRelayout();
   else if(keys.some(k=>["t","anim"].includes(k))){bkApply();bkUi()}
+  if(keys.includes("anim")){bkPrepSoon();if(p.anim!=="real")try{$("#bkF2").srcdoc="";BK.prepOk=false}catch{}}
   if(BK.layer==="sheet"&&!keys.includes("dim")&&!keys.includes("fs")){const s=$("#bkSheet");s.innerHTML=bkSheetHtml()}}
 $("#bkSheet").addEventListener("click",e=>{let t;if(e.target.closest("[data-diag]")){const d=bkDiag();(navigator.clipboard?navigator.clipboard.writeText(d):Promise.reject()).then(()=>toast("Diagnostic copié"),()=>toast(d.split("\n")[1]));return}if(t=e.target.closest("[data-set]")){let v=t.dataset.v;const k=t.dataset.set;if(["lh","m"].includes(k))v=+v;bkSet({[k]:v});return}
   if(t=e.target.closest("[data-sw]")){bkSet({[t.dataset.sw]:!BK.S[t.dataset.sw]});return}
@@ -2218,7 +2263,7 @@ async function openBook(it){if(BK.open)return;BK.open=true;BK.it=it;BK.book=null
   const st=bookState(it.id);await bkLoad(st?st.ci:0,st?{off:st.off}:{});
   try{if(navigator.wakeLock)navigator.wakeLock.request("screen").then(l=>{BK.wl=l}).catch(()=>{})}catch{}
   clearTimeout(BK.chT);BK.chT=setTimeout(()=>{if(BK.open&&!BK.layer)bkChrome(false)},2600)}
-function bkCleanup(){const el=$("#bk");el.classList.remove("on","chrome","show");el.setAttribute("aria-hidden","true");try{$("#bkF").srcdoc=""}catch{};BK.urls.forEach(u=>URL.revokeObjectURL(u));BK.urls=[];BK.book=null;BK.doc=null;BK.rd=null}
+function bkCleanup(){const el=$("#bk");el.classList.remove("on","chrome","show");el.setAttribute("aria-hidden","true");try{$("#bkF").srcdoc="";$("#bkF2").srcdoc=""}catch{};clearTimeout(BK.prepT);BK.prepOk=false;BK.d2=null;BK.fdir=0;BK.urls.forEach(u=>URL.revokeObjectURL(u));BK.urls=[];BK.book=null;BK.doc=null;BK.rd=null}
 function bkHide(){if(!BK.open)return;BK.open=false;BK.tok++;bkLayerHide();bkMeta(false);bkCleanup()}
 function bkClose(){if(!BK.open)return;clearTimeout(bkSvT);bkSave();BK.tok++;bkSelHide();try{BK.wl&&BK.wl.release()}catch{}
   const el=$("#bk"),it=BK.it,card=it&&!MQ_OFF()?bkCardCover(it.id):null,wasLib=$("#v-lib").classList.contains("on");BK.open=false;bkLayerHide();bkMeta(false);$("#bkNote").classList.remove("on");$("#bkBack").classList.remove("on");
@@ -2236,7 +2281,7 @@ $("#bkBack").onclick=()=>{const b=BK.back;$("#bkBack").classList.remove("on");if
 $("#bkNote").addEventListener("click",e=>{const n=$("#bkNote");if(e.target.closest("[data-nx]"))n.classList.remove("on");else if(e.target.closest("[data-ng]")){const t=n._t;n.classList.remove("on");if(t)bkJump(t.ci,t.frag)}});
 $("#bkSel").addEventListener("mousedown",e=>e.preventDefault());$("#bkSel").addEventListener("touchstart",e=>e.preventDefault(),{passive:false});
 $("#bkSel").addEventListener("click",e=>{const c=e.target.closest("[data-hc]");if(c){bkAddHl(+c.dataset.hc);return}
-  const a=e.target.closest("[data-sa]");if(!a)return;const sr=bkSelRange();if(a.dataset.sa==="copy"&&sr){(navigator.clipboard?navigator.clipboard.writeText(sr.text):Promise.reject()).then(()=>toast("Texte copié"),()=>toast("Copie impossible"));bkSelHide()}
+  const a=e.target.closest("[data-sa]");if(!a)return;if(["eb","ef","es"].includes(a.dataset.sa)){bkSelExtend(a.dataset.sa);return}const sr=bkSelRange();if(a.dataset.sa==="copy"&&sr){(navigator.clipboard?navigator.clipboard.writeText(sr.text):Promise.reject()).then(()=>toast("Texte copié"),()=>toast("Copie impossible"));bkSelHide()}
   else if(a.dataset.sa==="note"){const h=bkAddHl(0);if(h)setTimeout(()=>bkOpenHl(h.id),60)}});
 const bkSk=$("#bkSeek");bkSk.addEventListener("pointerdown",()=>{bkSk._drag=true});addEventListener("pointerup",()=>{bkSk._drag=false});
 bkSk.addEventListener("input",()=>{pct(bkSk);const bk=BK.book;if(!bk)return;const tw=bkSk.value/1000*bk.total;let acc=0,ci=0;for(;ci<bk.spine.length-1;ci++){if(acc+bk.spine[ci].size>tw)break;acc+=bk.spine[ci].size}
