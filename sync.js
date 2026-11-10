@@ -467,6 +467,7 @@
       const file = mime ? new Blob([final], { type: mime }) : final;
       const id = await dbPut({ cat: x.cat, name: x.name, blob: file, type: file.type });
       if (META[x.cat].ty === "audio" && typeof extractAudio === "function") await extractAudio(id, file, null, x.name).catch(() => { });
+      if (META[x.cat].ty === "book" && typeof importBookMeta === "function") await importBookMeta(id, file).catch(() => { });
       await sclear("chunks", IDBKeyRange.bound(x.tid + ":", x.tid + ":\uffff")).catch(() => { }); await sdel("meta", "x" + x.tid).catch(() => { });
       send({ t: "xfer:done", tid: x.tid, to: x.to }); x.state = "terminé"; S.xf.delete(x.tid);
       await publishLib(true); toast("Transfert terminé : " + x.name.replace(/\.[^.]+$/, ""));
