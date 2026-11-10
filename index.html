@@ -547,8 +547,12 @@ html[data-eco] .mqi,html[data-motion=reduce] .mqi{animation:none}
 .lt.b{width:40px;height:58px;border-radius:4px 7px 7px 4px}
 
 /* ---------- Lecteur de livres ---------- */
-.bk{position:fixed;inset:0;z-index:190;display:none;overflow:hidden;background:var(--bg);color:var(--fg);--bg:#1b1d24;--fg:#d8dae0;--acc:#7fb0ff;--acc2:var(--acc);--line:rgba(255,255,255,.12);--bar:rgba(24,26,33,.97);--mut:rgba(160,165,180,.85);--track:var(--line);--chip:var(--line);--swoff:rgba(128,128,140,.45);--txt:var(--fg);--glass:var(--bar);--gline:var(--line);-webkit-user-select:none;user-select:none}
-.bk.on{display:block}
+.bk{position:fixed;inset:0;z-index:190;display:none;overflow:hidden;opacity:0;transform:translate3d(0,18px,0) scale(.99);transition:opacity .3s ease,transform .38s cubic-bezier(.2,.8,.2,1);background:var(--bg);color:var(--fg);--bg:#1b1d24;--fg:#d8dae0;--acc:#7fb0ff;--acc2:var(--acc);--line:rgba(255,255,255,.12);--bar:rgba(24,26,33,.97);--mut:rgba(160,165,180,.85);--track:var(--line);--chip:var(--line);--swoff:rgba(128,128,140,.45);--txt:var(--fg);--glass:var(--bar);--gline:var(--line);-webkit-user-select:none;user-select:none}
+.bk.on{display:block}.bk.show{opacity:1;transform:none}
+.bk[data-t=paper],.bk[data-t=white],.bk[data-t=sepia]{color-scheme:light}.bk[data-t=night],.bk[data-t=black]{color-scheme:dark}
+.bkfly{position:fixed;z-index:195;overflow:hidden;margin:0;border-radius:6px 10px 10px 6px;box-shadow:0 24px 70px rgba(0,0,0,.6);pointer-events:none;transition:left .48s cubic-bezier(.2,.8,.2,1),top .48s cubic-bezier(.2,.8,.2,1),width .48s cubic-bezier(.2,.8,.2,1),height .48s cubic-bezier(.2,.8,.2,1),border-radius .48s,opacity .2s ease}
+.bkfly .prog,.bkfly .bkdone{display:none}
+html[data-eco] .bk,html[data-motion=reduce] .bk{transition-duration:.01s}html[data-eco] .bkfly,html[data-motion=reduce] .bkfly{transition-duration:.01s}
 .bk[data-t=paper]{--bg:#f5f0e6;--fg:#2a251d;--acc:#a8602a;--line:rgba(60,40,20,.16);--bar:rgba(245,240,230,.97);--mut:#8a7e6a}
 .bk[data-t=white]{--bg:#fff;--fg:#1b1b1d;--acc:#1f6fe0;--line:rgba(0,0,0,.12);--bar:rgba(255,255,255,.97);--mut:#7b7b82}
 .bk[data-t=sepia]{--bg:#ead9b9;--fg:#45311d;--acc:#9a5420;--line:rgba(70,40,10,.18);--bar:rgba(234,217,185,.97);--mut:#8a6f4d}
@@ -1559,7 +1563,7 @@ new MutationObserver(ms=>{for(const m of ms){const t=m.type==="characterData"?m.
 mqScan(document);window.MQ_READY=true;
 
 /* ---------- Réglages ---------- */
-const APP_VER="4.0",APP_BUILD=24;
+const APP_VER="4.0",APP_BUILD=25;
 /* ---------- Mise à jour de l'application ---------- */
 let UPD_T=0,updating=false;
 function showUpdateBar(remote){if($("#updbar"))return;const b=document.createElement("div");b.id="updbar";b.className="updbar";
@@ -1936,7 +1940,10 @@ function bkCss(m){const S=BK.S,T=BK_THEMES[bkTheme()],pub=S.ff==="pub",ff=BK_FON
   const hl=T.dark?["rgba(255,213,0,.30)","rgba(80,220,140,.28)","rgba(90,160,255,.34)","rgba(255,110,170,.30)"]:["rgba(255,213,0,.5)","rgba(80,200,120,.42)","rgba(80,150,255,.4)","rgba(255,100,160,.38)"];
   const layout=m.paged?`#rd{box-sizing:border-box;position:absolute;left:${m.M}px;top:0;width:${m.W-2*m.M}px;height:${m.H}px;padding:${m.PT}px 0 ${m.PB}px;column-width:${m.CW}px;column-gap:${2*m.M}px;column-fill:auto}html,body{overflow:hidden!important;height:100%!important}`
     :`html{overflow-y:auto!important;overflow-x:hidden!important}body{height:auto!important;overflow:visible!important}#rd{box-sizing:border-box;padding:${m.PT}px ${m.M}px ${m.PB+60}px}`;
-  return`html,body{margin:0!important;padding:0!important;background:transparent!important;max-width:none!important;width:auto!important;-webkit-text-size-adjust:none}
+  return`:root{color-scheme:${T.dark?"dark":"light"}}
+html{background:${T.bg}!important;-webkit-tap-highlight-color:transparent}
+html,body{margin:0!important;padding:0!important;max-width:none!important;width:auto!important;-webkit-text-size-adjust:none}body{background:transparent!important}
+@media (hover:none){#rd,#rd *{cursor:pointer}}
 body{color:${T.fg}!important;${pub?"":`font-family:${ff};`}font-size:${bkFs()}px!important;line-height:${S.lh}!important;text-align:${S.just?"justify":"left"};hyphens:auto;-webkit-hyphens:auto;overflow-wrap:break-word;word-break:normal}
 ${layout}
 #rd{transition:transform ${S.anim==="slide"?".34s cubic-bezier(.22,.7,.2,1)":"0s"},opacity .16s}
@@ -1955,7 +1962,8 @@ ${pub?"":`#rd *:not(pre):not(code):not(kbd):not(samp):not(tt){font-family:inheri
 #rd mark.hn{border-bottom:2px dotted ${T.acc}}#rd mark.fl{background-color:${T.acc}55!important;border-radius:3px}
 ::selection{background:${T.acc}55}`}
 function bkApply(){if(!BK.doc)return;BK.m=bkMetrics();BK.doc.getElementById("base").textContent=bkCss(BK.m);$("#bkGut").style.display=BK.m.spread?"block":"none"}
-function bkSetTheme(){$("#bk").dataset.t=bkTheme();$("#bkDim").style.opacity=(BK.S.dim||0)/100}
+function bkMeta(on){const m=document.querySelector('meta[name="theme-color"]');if(!m)return;if(on){if(BK.tc==null)BK.tc=m.content;m.content=BK_THEMES[bkTheme()].bg}else if(BK.tc!=null){m.content=BK.tc;BK.tc=null}}
+function bkSetTheme(){$("#bk").dataset.t=bkTheme();$("#bkDim").style.opacity=(BK.S.dim||0)/100;if(BK.open)bkMeta(true)}
 function bkCount(){const m=BK.m;if(!m.paged){BK.pages=1;return}BK.pages=Math.max(1,Math.ceil((BK.rd.scrollWidth+2*m.M-2)/m.W))}
 function bkIndex(){const w=BK.doc.createTreeWalker(BK.rd,NodeFilter.SHOW_TEXT),a=[];let n,s=0;while(n=w.nextNode()){a.push({n,s});s+=n.nodeValue.length}BK.tn=a;BK.len=s}
 
@@ -1975,11 +1983,11 @@ const bkPageOfEl=el=>bkPageOfMetric(bkMetric(el.getBoundingClientRect()));
 function bkScrollTo(y){BK.doc.scrollingElement.scrollTop=Math.max(0,y-40)}
 
 /* --- affichage d'une page / d'un chapitre --- */
-function bkShow(p,opt={}){const m=BK.m,rd=BK.rd;if(!rd||!m.paged)return;p=Math.max(0,Math.min(BK.pages-1,p));const prev=BK.page;BK.page=p;const tf=`translate3d(${-p*m.W}px,0,0)`;
-  if(opt.instant||BK.S.anim==="none"||prev===p){rd.style.transition="none";rd.style.transform=tf;rd.getBoundingClientRect();rd.style.transition=""}
+function bkShow(p,opt={}){const m=BK.m,rd=BK.rd;if(!rd||!m.paged)return;p=Math.max(0,Math.min(BK.pages-1,p));BK.page=p;const tf=`translate3d(${-p*m.W}px,0,0)`;
+  if(opt.instant||BK.S.anim==="none"){rd.style.transition="none";rd.style.transform=tf;rd.getBoundingClientRect();rd.style.transition=""}
   else if(BK.S.anim==="fade"){rd.style.transition="opacity .12s";rd.style.opacity=0;setTimeout(()=>{if(BK.rd!==rd)return;rd.style.transition="none";rd.style.transform=tf;rd.getBoundingClientRect();rd.style.transition="opacity .18s";rd.style.opacity=1},120)}
-  else rd.style.transform=tf;
-  bkSelHide();bkUi();bkSaveSoon()}
+  else{rd.style.willChange="transform";rd.style.transform=tf;clearTimeout(BK.wcT);BK.wcT=setTimeout(()=>{if(BK.rd===rd)rd.style.willChange=""},520)}
+  bkSelHide();clearTimeout(BK.uiT);BK.uiT=setTimeout(()=>{bkUi();bkSaveSoon()},70)}
 function bkPlace(o){let p=0;
   if(o.last)p=BK.pages-1;
   else if(o.frag){const el=BK.doc.getElementById(o.frag)||BK.doc.getElementsByName(o.frag)[0];if(el)p=bkPageOfEl(el)}
@@ -2013,11 +2021,11 @@ function bkRelayout(){if(!BK.doc)return;const off=bkFirstOffset();bkApply();bkCo
 function bkChromeHide(){if(BK.chrome&&!BK.layer)bkChrome(false)}
 function bkChrome(v){BK.chrome=v==null?!BK.chrome:v;$("#bk").classList.toggle("chrome",BK.chrome)}
 function bkNext(){if(!BK.doc)return;const bk=BK.book;
-  if(BK.m.paged){if(BK.page<BK.pages-1)bkShow(BK.page+1);else if(BK.ci<bk.spine.length-1)bkLoad(BK.ci+1,{});else toast("Fin du livre")}
+  if(BK.m.paged){if(BK.page<BK.pages-1)bkShow(BK.page+1);else if(BK.ci<bk.spine.length-1)bkLoad(BK.ci+1,{});else{toast("Fin du livre");bkShow(BK.page)}}
   else{const se=BK.doc.scrollingElement;if(se.scrollTop+se.clientHeight>=se.scrollHeight-4){if(BK.ci<bk.spine.length-1)bkLoad(BK.ci+1,{});else toast("Fin du livre")}else se.scrollBy({top:se.clientHeight*.86,behavior:"smooth"})}
   bkChromeHide()}
 function bkPrev(){if(!BK.doc)return;
-  if(BK.m.paged){if(BK.page>0)bkShow(BK.page-1);else if(BK.ci>0)bkLoad(BK.ci-1,{last:true})}
+  if(BK.m.paged){if(BK.page>0)bkShow(BK.page-1);else if(BK.ci>0)bkLoad(BK.ci-1,{last:true});else bkShow(BK.page)}
   else{const se=BK.doc.scrollingElement;if(se.scrollTop<=2){if(BK.ci>0)bkLoad(BK.ci-1,{last:true})}else se.scrollBy({top:-se.clientHeight*.86,behavior:"smooth"})}
   bkChromeHide()}
 function bkPct(){const bk=BK.book;if(!bk||!BK.m)return 0;let acc=0;for(let i=0;i<BK.ci;i++)acc+=bk.spine[i].size;const w=bk.spine[BK.ci].size;let fr=0;
@@ -2062,10 +2070,18 @@ function bkToggleMark(){if(!BK.doc)return;if(bkMarked()){BK.ann.bm=BK.ann.bm.fil
   bkSaveAnn();bkUi();haptic("sel");if(BK.layer==="panel")bkPanelRender()}
 
 /* --- gestes et clavier dans la page --- */
-function bkBind(doc){let tx=0,ty=0,tt=0,sw=false;
-  doc.addEventListener("touchstart",e=>{const t=e.touches[0];tx=t.clientX;ty=t.clientY;tt=Date.now();sw=false},{passive:true});
-  doc.addEventListener("touchend",e=>{const t=e.changedTouches[0],dx=t.clientX-tx,dy=t.clientY-ty;if(BK.m.paged&&Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.6&&Date.now()-tt<700&&!bkHasSel()){sw=true;dx<0?bkNext():bkPrev()}},{passive:true});
-  doc.addEventListener("click",e=>{if(sw){sw=false;return}bkTap(e)});
+function bkBind(doc){let st=null,tapped=0;
+  doc.addEventListener("touchstart",e=>{if(e.touches.length!==1){st=null;return}const t=e.touches[0];st={x:t.clientX,y:t.clientY,t:Date.now(),dx:0,drag:false}},{passive:true});
+  doc.addEventListener("touchmove",e=>{if(!st||!BK.m.paged)return;const t=e.touches[0],dx=t.clientX-st.x,dy=t.clientY-st.y;
+    if(!st.drag){if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.4&&!bkHasSel()){st.drag=true;BK.rd.style.transition="none";BK.rd.style.willChange="transform"}else return}
+    st.dx=dx;const last=BK.ci===BK.book.spine.length-1&&BK.page>=BK.pages-1&&dx<0,first=BK.ci===0&&BK.page===0&&dx>0;
+    BK.rd.style.transform=`translate3d(${-BK.page*BK.m.W+(last||first?dx*.22:dx)}px,0,0)`;e.preventDefault()},{passive:false});
+  doc.addEventListener("touchend",e=>{if(!st)return;const t=e.changedTouches[0],dx=t.clientX-st.x,dy=t.clientY-st.y,dt=Date.now()-st.t,s0=st;st=null;
+    if(s0.drag){tapped=Date.now();const W=BK.m.W,fast=Math.abs(dx)/Math.max(dt,1)>.4;BK.rd.style.transition="";
+      if(dx<-W*.15||(fast&&dx<-28))bkNext();else if(dx>W*.15||(fast&&dx>28))bkPrev();else bkShow(BK.page);
+      return}
+    if(Math.abs(dx)<10&&Math.abs(dy)<10&&dt<420&&!bkHasSel()){tapped=Date.now();bkTap({target:e.target,clientX:t.clientX,clientY:t.clientY,preventDefault(){}})}},{passive:true});
+  doc.addEventListener("click",e=>{const a=e.target.closest&&e.target.closest("a");if(a)e.preventDefault();if(Date.now()-tapped<600)return;bkTap(e)});
   doc.addEventListener("keydown",bkKey);
   doc.addEventListener("wheel",e=>{if(!BK.m.paged)return;e.preventDefault();const d=Math.abs(e.deltaY)>Math.abs(e.deltaX)?e.deltaY:e.deltaX;if(Math.abs(d)<8||Date.now()-(BK.wt||0)<380)return;BK.wt=Date.now();d>0?bkNext():bkPrev()},{passive:false});
   doc.addEventListener("selectionchange",()=>{clearTimeout(BK.selT);BK.selT=setTimeout(bkSelUpdate,200)});
@@ -2155,20 +2171,29 @@ $("#bkSheet").addEventListener("click",e=>{let t;if(t=e.target.closest("[data-se
 $("#bkSheet").addEventListener("input",e=>{if(e.target.id==="bkFs"){pct(e.target);clearTimeout(BK.fsT);const v=+e.target.value;BK.fsT=setTimeout(()=>bkSet({fs:v}),90)}else if(e.target.id==="bkDimR"){pct(e.target);bkSet({dim:+e.target.value})}});
 
 /* --- ouverture et fermeture --- */
+const BK_FLY=480;
+function bkFlyEl(rect,cov){const c=cov.cloneNode(true);c.classList.add("bkfly");c.removeAttribute("data-cv");c.querySelectorAll("img").forEach(i=>{i.loading="eager"});Object.assign(c.style,{left:rect.left+"px",top:rect.top+"px",width:rect.width+"px",height:rect.height+"px",aspectRatio:"auto"});document.body.appendChild(c);return c}
+function bkCardCover(id){const c=document.querySelector('#libBody [data-cv="'+id+'"]');if(!c||!$("#v-lib").classList.contains("on"))return null;const r=c.getBoundingClientRect();return r.width>8&&r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth?{c,r}:null}
 async function openBook(it){if(BK.open)return;BK.open=true;BK.it=it;BK.book=null;BK.doc=null;BK.rd=null;BK.back=null;BK.sr={q:"",res:[],busy:false,prog:0};bkTab="toc";pushNav({bk:1});setLast(it);renderShelf();
-  const el=$("#bk");el.classList.add("on","chrome");el.setAttribute("aria-hidden","false");BK.chrome=true;bkSetTheme();$("#bkF").style.opacity=0;
+  const el=$("#bk"),card=bkCardCover(it.id);el.classList.add("on","chrome");el.setAttribute("aria-hidden","false");BK.chrome=true;bkSetTheme();bkMeta(true);$("#bkF").style.opacity=0;
   $("#bkMsg").textContent="Ouverture du livre…";$("#bkMsg").classList.add("on");$("#bkBack").classList.remove("on");$("#bkNote").classList.remove("on");
-  el.animate([{opacity:0,transform:"scale(.985)"},{opacity:1,transform:"none"}],{duration:320,easing:"cubic-bezier(.2,.8,.2,1)"});
+  if(card&&!MQ_OFF()){const fl=bkFlyEl(card.r,card.c);void fl.offsetWidth;requestAnimationFrame(()=>Object.assign(fl.style,{left:"0px",top:"0px",width:innerWidth+"px",height:innerHeight+"px",borderRadius:"0px"}));
+    setTimeout(()=>el.classList.add("show"),BK_FLY*.45);setTimeout(()=>{fl.style.opacity="0"},BK_FLY+60);setTimeout(()=>fl.remove(),BK_FLY+320)}
+  else{void el.offsetWidth;requestAnimationFrame(()=>el.classList.add("show"))}
   try{BK.book=await readEpub(it.blob)}catch(e){if(!BK.open)return;toast(e&&e.drm?"Livre protégé (DRM) : non lisible":"Impossible d’ouvrir ce livre");history.back();return}
   if(!BK.open)return;const bk=BK.book;$("#bkT").textContent=bk.title||titleOf(it);$("#bkA").textContent=bk.author||"";BK.ann=bkGetAnn();BK.ci=0;
   const st=bookState(it.id);await bkLoad(st?st.ci:0,st?{off:st.off}:{});
   try{if(navigator.wakeLock)navigator.wakeLock.request("screen").then(l=>{BK.wl=l}).catch(()=>{})}catch{}
   clearTimeout(BK.chT);BK.chT=setTimeout(()=>{if(BK.open&&!BK.layer)bkChrome(false)},2600)}
-function bkHide(){if(!BK.open)return;BK.open=false;bkLayerHide();$("#bk").classList.remove("on","chrome");$("#bk").setAttribute("aria-hidden","true");try{$("#bkF").srcdoc=""}catch{};BK.urls.forEach(u=>URL.revokeObjectURL(u));BK.urls=[];BK.book=null;BK.doc=null;BK.rd=null}
+function bkCleanup(){const el=$("#bk");el.classList.remove("on","chrome","show");el.setAttribute("aria-hidden","true");try{$("#bkF").srcdoc=""}catch{};BK.urls.forEach(u=>URL.revokeObjectURL(u));BK.urls=[];BK.book=null;BK.doc=null;BK.rd=null}
+function bkHide(){if(!BK.open)return;BK.open=false;bkLayerHide();bkMeta(false);bkCleanup()}
 function bkClose(){if(!BK.open)return;clearTimeout(bkSvT);bkSave();bkSelHide();try{BK.wl&&BK.wl.release()}catch{}
-  const el=$("#bk");BK.open=false;bkLayerHide();$("#bkNote").classList.remove("on");$("#bkBack").classList.remove("on");
-  el.animate([{opacity:1},{opacity:0}],{duration:240,easing:"ease-in",fill:"forwards"}).onfinish=()=>{if(BK.open)return;el.classList.remove("on","chrome");el.setAttribute("aria-hidden","true");el.getAnimations().forEach(a=>a.cancel());try{$("#bkF").srcdoc=""}catch{};BK.urls.forEach(u=>URL.revokeObjectURL(u));BK.urls=[];BK.book=null;BK.doc=null;BK.rd=null};
-  if($("#v-lib").classList.contains("on"))renderLib();renderShelf()}
+  const el=$("#bk"),it=BK.it,card=it&&!MQ_OFF()?bkCardCover(it.id):null,wasLib=$("#v-lib").classList.contains("on");BK.open=false;bkLayerHide();bkMeta(false);$("#bkNote").classList.remove("on");$("#bkBack").classList.remove("on");
+  if(card){const fl=bkFlyEl({left:0,top:0,width:innerWidth,height:innerHeight},card.c);fl.style.borderRadius="0px";fl.style.opacity="0";fl.style.transition="none";void fl.offsetWidth;fl.style.transition="";
+    requestAnimationFrame(()=>{fl.style.opacity="1";el.classList.remove("show");requestAnimationFrame(()=>Object.assign(fl.style,{left:card.r.left+"px",top:card.r.top+"px",width:card.r.width+"px",height:card.r.height+"px",borderRadius:"6px 10px 10px 6px"}))});
+    setTimeout(()=>{if(!BK.open)bkCleanup()},260);setTimeout(()=>{fl.style.opacity="0"},BK_FLY+40);setTimeout(()=>fl.remove(),BK_FLY+280);
+    setTimeout(()=>{if(wasLib&&$("#v-lib").classList.contains("on"))renderLib();renderShelf()},BK_FLY+300)}
+  else{el.classList.remove("show");setTimeout(()=>{if(!BK.open)bkCleanup()},400);if(wasLib)setTimeout(()=>{if($("#v-lib").classList.contains("on"))renderLib()},420);renderShelf()}}
 $("#bkX").onclick=()=>history.back();
 $("#bkSearch").onclick=()=>bkPanelRender("search");$("#bkToc").onclick=()=>bkPanelRender("toc");
 $("#bkAa").onclick=()=>bkLayerOpen("sheet",bkSheetHtml());$("#bkMark").onclick=bkToggleMark;
