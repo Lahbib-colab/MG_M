@@ -1676,24 +1676,40 @@ new MutationObserver(ms=>{for(const m of ms){const t=m.type==="characterData"?m.
 mqScan(document);window.MQ_READY=true;
 
 /* ---------- Réglages ---------- */
-const APP_VER="4.0",APP_BUILD=34;
+const APP_VER="4.0",APP_BUILD=35;
 /* ---------- Mise à jour de l'application ---------- */
 let UPD_T=0,updating=false;
 function showUpdateBar(remote){if($("#updbar"))return;const b=document.createElement("div");b.id="updbar";b.className="updbar";
-  b.innerHTML=`<span>Nouvelle version disponible${remote?" (build "+remote+")":""}</span><button class="btn" data-u="go">Mettre à jour</button><button class="btn ghost" data-u="no">Plus tard</button>`;document.body.appendChild(b);
+  b.innerHTML=`<span>Nouvelle version disponible${remote?" (build "+remote+")":""}<small id="updwhy" style="display:block;opacity:.8;font-size:12px;margin-top:2px"></small></span><button class="btn" data-u="go">Mettre à jour</button><button class="btn ghost" data-u="no">Plus tard</button>`;document.body.appendChild(b);
   b.onclick=e=>{const k=e.target.closest("[data-u]")?.dataset.u;if(k==="no")b.remove();else if(k==="go")applyUpdate()}}
+let UPD_REMOTE=0;
 async function applyUpdate(){const b=$("#updbar");if(b)b.querySelector("[data-u=go]").textContent="Mise à jour…";updating=true;
+  const t=LS.get("mg.updTry",null),now=Date.now(),again=t&&t.b===UPD_REMOTE&&now-t.t<30*60e3;LS.set("mg.updTry",{b:UPD_REMOTE,t:now});
+  if(again){ /* 2e tentative pour la même version : on repart d'un cache propre (bibliothèque et réglages ne sont pas touchés) */
+    try{await Promise.all((await navigator.serviceWorker.getRegistrations()).map(r=>r.unregister()));await Promise.all((await caches.keys()).map(k=>caches.delete(k)))}catch{}
+    setTimeout(()=>location.reload(),300);return}
   try{const reg=await navigator.serviceWorker.getRegistration();if(reg)await reg.update()}catch{}
   setTimeout(()=>{if(updating)location.reload()},6000)}
 if("serviceWorker"in navigator)navigator.serviceWorker.addEventListener("controllerchange",()=>{if(updating)location.reload()});
+/* Pourquoi la nouvelle version ne s'installe pas ? Compare ce que l'hébergement sert réellement à la liste de sw.js. */
+async function updDiag(remote,swText){
+  const mk=n=>{const m=swText.match(new RegExp("const "+n+" = \\[([^\\]]*)\\]"));return m?[...m[1].matchAll(/"([^"]+)"/g)].map(x=>x[1]):[]};
+  const core=mk("CORE"),extra=mk("EXTRA"),miss=[],soft=[];let ix="";
+  await Promise.all([...core,...extra].filter(u=>u!=="./").map(async u=>{
+    try{const r=await fetch(u+"?_chk="+Date.now(),{cache:"no-store"});if(!r.ok)throw 0;
+      if(u==="./index.html"){const m=(await r.text()).match(/APP_BUILD=(\d+)/);if(!m||+m[1]!==remote)ix="index.html est encore en build "+(m?m[1]:"?")+" sur l'hébergement (attendu "+remote+") : attendez quelques minutes ou téléversez-le"}}
+    catch{(core.includes(u)?miss:soft).push(u.replace("./",""))}}));
+  const out=[];if(ix)out.push(ix);if(miss.length)out.push("fichier introuvable sur l'hébergement : "+miss.join(", "));
+  const el=$("#updwhy");if(el)el.textContent=out.join(" · ")||(soft.length?"Fichier facultatif absent (sans gravité) : "+soft.join(", "):"");
+  return out}
 async function checkUpdate(manual){
   if(!("serviceWorker"in navigator)){if(manual)toast("Mises à jour automatiques indisponibles dans ce mode");return}
   if(!navigator.onLine){if(manual)toast("Vérification impossible hors connexion");return}
   const reg=await navigator.serviceWorker.getRegistration().catch(()=>null);
   if(!reg){if(manual)toast("Mises à jour automatiques indisponibles dans ce mode");return}
   UPD_T=Date.now();
-  try{const r=await fetch("sw.js?_="+Date.now(),{cache:"no-store"});if(!r.ok)throw 0;const m=(await r.text()).match(/mg-media-v(\d+)/),remote=m?+m[1]:0;
-    if(remote>APP_BUILD){showUpdateBar(remote);if(manual)toast("Nouvelle version disponible")}
+  try{const r=await fetch("sw.js?_="+Date.now(),{cache:"no-store"});if(!r.ok)throw 0;const swText=await r.text(),m=swText.match(/mg-media-v(\d+)/),remote=m?+m[1]:0;
+    if(remote>APP_BUILD){UPD_REMOTE=remote;showUpdateBar(remote);updDiag(remote,swText).catch(()=>{});if(manual)toast("Nouvelle version disponible")}
     else{reg.update().catch(()=>{});if(manual)toast("Vous avez la dernière version (build "+APP_BUILD+")")}
   }catch{if(manual)toast("Vérification impossible")}}
 let WALL=false,WALL_URL="";
