@@ -681,6 +681,21 @@ html[data-theme=light] .shelf .resume{background:linear-gradient(162deg,rgba(22,
 html[data-theme=light] .shelf .resume .t2{color:rgba(255,255,255,.7)}
 html[data-eco] .shelf .resume{background:rgba(36,48,76,.82)}
 
+/* ---------- Fond « Habitacle MG » (photo) ---------- */
+#scene .hab,#scene .hab2{position:absolute;inset:0;opacity:0;pointer-events:none;background-repeat:no-repeat;background-size:cover;transition:opacity .8s ease}
+#scene .hab{background-image:url(icons/bg-habitacle.webp);background-position:52% 42%;box-shadow:inset 0 0 0 100vmax rgba(3,6,14,0);transition:opacity .8s ease,box-shadow .8s ease}
+#scene .hab2{background-image:url(icons/bg-habitacle-flou.webp);background-position:center}
+html[data-theme=light] #scene .hab::after,html[data-theme=light] #scene .hab2::after{content:"";position:absolute;inset:0}
+.sc[data-bg=habitacle]{--sbg:#04070f}
+#scene[data-bg=habitacle] .hab{opacity:1}
+.sc[data-bg=habitacle] i,.sc[data-bg=habitacle] .pat,.sc[data-bg=habitacle] .mark{display:none}
+html.inview #scene[data-bg=habitacle] .hab2{opacity:1}
+html.inview #scene[data-bg=habitacle] .hab{box-shadow:inset 0 0 0 100vmax rgba(3,6,14,.72)}
+html[data-theme=light] #scene .hab::after{background:linear-gradient(180deg,rgba(236,243,255,.80) 0%,rgba(236,243,255,.62) 40%,rgba(224,235,252,.88) 100%)}
+html[data-theme=light] #scene .hab2::after{background:rgba(236,243,255,.78)}
+.pv[data-bg=habitacle]{background:url(icons/bg-habitacle.webp) 52% 42%/cover}
+html[data-eco] #scene .hab,html[data-eco] #scene .hab2{transition-duration:.01s}
+
 /* ---------- Portrait ---------- */
 @media (orientation:portrait){
   .tiles{grid-template-columns:repeat(3,1fr);height:auto;grid-auto-rows:22vh}
@@ -720,7 +735,7 @@ html[data-eco] .shelf .resume{background:rgba(36,48,76,.82)}
   <button class="sp-skip" id="spSkip" type="button">Passer</button>
 </div>
 
-<div id="scene" class="sc" data-bg="nuit" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><div class="pat"></div><div class="mark"></div><div class="grain"></div><div class="wall"></div></div>
+<div id="scene" class="sc" data-bg="habitacle" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><div class="pat"></div><div class="hab"></div><div class="hab2"></div><div class="mark"></div><div class="grain"></div><div class="wall"></div></div>
 <div id="app">
   <header class="top">
     <img class="logo" src="icons/logo-mg.png" alt="MG">
@@ -840,10 +855,10 @@ const ICON={
 function toast(t){const e=$("#toast");e.textContent=t;e.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display="none",2600)}
 const fmt=s=>{if(!isFinite(s))return"0:00";s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),r=s%60;return(h?h+":"+String(m).padStart(2,"0"):m)+":"+String(r).padStart(2,"0")};
 let navDepth=(history.state&&history.state.d)||0,goingHome=false;const pushNav=st=>{navDepth++;history.pushState({...st,d:navDepth},"")};
-const CFG0={sound:true,ui:true,fx:60,haptic:true,resume:true,autonext:true,motion:false,pin:"",subAuto:true,subSize:100,tr:60,bg:"nuit",immersive:true,eco:"auto",anim:false,voice:true,voiceName:""};
+const CFG0={sound:true,ui:true,fx:60,haptic:true,resume:true,autonext:true,motion:false,pin:"",subAuto:true,subSize:100,tr:60,bg:"habitacle",immersive:true,eco:"auto",anim:false,voice:true,voiceName:""};
 const LS={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
 
-let CFG={...CFG0,...LS.get("mg.cfg",{})};const cfg=k=>CFG[k];const setCfg=o=>{Object.assign(CFG,o);LS.set("mg.cfg",CFG)};
+let CFG={...CFG0,...LS.get("mg.cfg",{})};if(CFG.bgV!==2){if(!CFG.bg||CFG.bg==="nuit")CFG.bg="habitacle";CFG.bgV=2;LS.set("mg.cfg",CFG)}const cfg=k=>CFG[k];const setCfg=o=>{Object.assign(CFG,o);LS.set("mg.cfg",CFG)};
 document.documentElement.dataset.motion=CFG.motion?"reduce":"";
 const applyTr=()=>document.documentElement.style.setProperty("--tr",(CFG.tr/100).toFixed(2));applyTr();
 let LOWBAT=false,AUTOSLOW=!!JSON.parse(localStorage.getItem("mg.slow")||"false"),audUrl="",vidUrl="",covUrl="";
@@ -1661,7 +1676,7 @@ new MutationObserver(ms=>{for(const m of ms){const t=m.type==="characterData"?m.
 mqScan(document);window.MQ_READY=true;
 
 /* ---------- Réglages ---------- */
-const APP_VER="4.0",APP_BUILD=32;
+const APP_VER="4.0",APP_BUILD=34;
 /* ---------- Mise à jour de l'application ---------- */
 let UPD_T=0,updating=false;
 function showUpdateBar(remote){if($("#updbar"))return;const b=document.createElement("div");b.id="updbar";b.className="updbar";
@@ -1682,8 +1697,8 @@ async function checkUpdate(manual){
     else{reg.update().catch(()=>{});if(manual)toast("Vous avez la dernière version (build "+APP_BUILD+")")}
   }catch{if(manual)toast("Vérification impossible")}}
 let WALL=false,WALL_URL="";
-const BGN={nuit:"Nuit MG",carbone:"Carbone rouge",octogone:"Octogone",piste:"Piste",titane:"Titane",rouge:"Rouge MG",heritage:"Héritage",photo:"Votre image"},BGK=["nuit","carbone","octogone","piste","titane","rouge","heritage"];
-const applyBg=()=>{let bg=cfg("bg");if(!BGN[bg]||(bg==="photo"&&!WALL))bg="nuit";$("#scene").dataset.bg=bg;$("#scene .wall").classList.toggle("on",bg==="photo")};
+const BGN={habitacle:"Habitacle MG",nuit:"Nuit MG",carbone:"Carbone rouge",octogone:"Octogone",piste:"Piste",titane:"Titane",rouge:"Rouge MG",heritage:"Héritage",photo:"Votre image"},BGK=["habitacle","nuit","carbone","octogone","piste","titane","rouge","heritage"];
+const applyBg=()=>{let bg=cfg("bg");if(!BGN[bg]||(bg==="photo"&&!WALL))bg="habitacle";$("#scene").dataset.bg=bg;$("#scene .wall").classList.toggle("on",bg==="photo")};
 applyBg();
 const applyWall=async()=>{const w=$("#scene .wall"),r=await tx("readonly",s=>s.get(-1)).catch(()=>null);WALL=!!(r&&r.blob);
   if(WALL){WALL_URL=URL.createObjectURL(r.blob);w.style.backgroundImage=`url(${WALL_URL})`;if(LS.get("mg.cfg",{}).bg===undefined)setCfg({bg:"photo"})}else{WALL_URL="";w.style.backgroundImage=""}applyBg()};

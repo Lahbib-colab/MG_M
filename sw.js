@@ -1,5 +1,5 @@
-const V = "mg-media-v32";
-const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/maskable-512.png", "./icons/logo-mg.png", "./sync.js", "./icons/maskable-192.png", "./icons/monochrome-512.png", "./icons/apple-touch-icon.png", "./icons/favicon-48.png", "./icons/shortcut-96.png"];
+const V = "mg-media-v34";
+const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/maskable-512.png", "./icons/logo-mg.png", "./sync.js", "./icons/maskable-192.png", "./icons/monochrome-512.png", "./icons/apple-touch-icon.png", "./icons/favicon-48.png", "./icons/shortcut-96.png", "./icons/bg-habitacle.webp", "./icons/bg-habitacle-flou.webp"];
 // Les fichiers sont toujours redemandés au réseau (cache: "reload") : sinon un hébergement qui garde les fichiers quelques minutes
 // (GitHub Pages : 10 min) ferait copier d'anciens fichiers dans le cache de la nouvelle version.
 self.addEventListener("install", e => { e.waitUntil(caches.open(V).then(c => Promise.all(SHELL.map(u => fetch(new Request(u, { cache: "reload" })).then(r => { if (!r.ok) throw new Error(u + " " + r.status); return c.put(u, r); })))).then(() => self.skipWaiting())); });
