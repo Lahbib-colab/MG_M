@@ -27,6 +27,8 @@
   const C = Object.assign({ url: "", id: "", token: "", name: "", auto: true, follow: true, allowShare: true, calib: 0, indicator: true }, jget("mg.sync.cfg", {}));
   if (!C.id) C.id = uid();
   const saveC = () => jset("mg.sync.cfg", C);
+  /* Relais du serveur (/proxy) pour l'extraction de liens : adresse, identifiant et jeton de cette tablette, ou null si elle n'est pas appairée. */
+  window.MGSYNC_PROXY = () => (C.url && C.token && C.id) ? { base: C.url.replace(/^wss:/i, "https:").replace(/^ws:/i, "http:").replace(/\/sync\/?$/, "/proxy"), id: C.id, token: C.token } : null;
   saveC();
   const myName = () => C.name || "Tablette " + C.id.slice(0, 4);
 
@@ -96,7 +98,7 @@
     const out = [], idx = new Map();
     for (const c of ["films", "musique", "livres"]) {
       let l = []; try { l = await dbAll(c); } catch { /* base indisponible */ }
-      for (const it of l) { const f = await fpOf(it); idx.set(f, it); out.push({ fp: f, cat: c, name: it.name, size: it.blob.size }); }
+      for (const it of l) { if (!it.blob) continue; /* flux en ligne : pas de fichier à partager */ const f = await fpOf(it); idx.set(f, it); out.push({ fp: f, cat: c, name: it.name, size: it.blob.size }); }
     }
     INDEX = idx; INV = out;
     invRev = hex(await sha(new TextEncoder().encode(out.map(x => x.fp).sort().join()))).slice(0, 12);
@@ -226,7 +228,7 @@
 
   /* ---------------------------------------------------------------- lecteurs : accès et utilitaires */
   const vOpen = () => { const o = $q("#ovV"); return !!(o && o.classList.contains("on")); };
-  function itemOf(el) { if (el === vid) return vOpen() && typeof curFilm !== "undefined" ? curFilm : null; return typeof cur !== "undefined" && aud.src ? cur : null; }
+  function itemOf(el) { if (el === vid) { const f = vOpen() && typeof curFilm !== "undefined" ? curFilm : null; return f && f.blob ? f : null; /* un flux en ligne (m3u8) n'a pas de fichier : il n'est pas synchronisé */ } return typeof cur !== "undefined" && aud.src ? cur : null; }
   function currentPlay() { const v = itemOf(vid); if (v) return { el: vid, it: v }; const a = itemOf(aud); if (a && !aud.paused) return { el: aud, it: a }; return null; }
   const kindOf = it => (META[it.cat].ty === "video" ? "video" : "audio");
   const once = (el, ev, ms) => new Promise(r => { const h = () => { el.removeEventListener(ev, h); r(true); }; el.addEventListener(ev, h); setTimeout(() => { el.removeEventListener(ev, h); r(false); }, ms || 5000); });

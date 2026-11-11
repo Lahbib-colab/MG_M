@@ -1,7 +1,7 @@
-const V = "mg-media-v35";
+const V = "mg-media-v36";
 // Fichiers INDISPENSABLES : tout ou rien. S'il en manque un, la nouvelle version n'est pas installée (l'ancienne continue de marcher)
 // et elle est retentée à la vérification suivante.
-const CORE = ["./", "./index.html", "./sync.js", "./manifest.webmanifest"];
+const CORE = ["./", "./index.html", "./sync.js", "./player.js", "./manifest.webmanifest"];
 // Fichiers FACULTATIFS (icônes, images de fond) : gardés s'ils sont là ; leur absence ne bloque jamais une mise à jour.
 const EXTRA = ["./icons/icon-192.png", "./icons/icon-512.png", "./icons/maskable-512.png", "./icons/logo-mg.png", "./icons/maskable-192.png", "./icons/monochrome-512.png", "./icons/apple-touch-icon.png", "./icons/favicon-48.png", "./icons/shortcut-96.png", "./icons/bg-habitacle.webp", "./icons/bg-habitacle-flou.webp"];
 const get = u => fetch(new Request(u, { cache: "reload" })).then(r => { if (!r.ok) throw new Error(u + " " + r.status); return r; });
