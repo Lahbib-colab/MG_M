@@ -1332,11 +1332,22 @@ $("#m3uIn").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f
 /* --- films en ligne (m3u8) --- */
 function openFilmsAdd(){modal(`<h3>Ajouter à Films & Séries</h3><div class="menu"><div class="mrow" data-a="file"><span class="mi">${ICON.plus}</span><span class="mt"><b>Fichiers de la tablette</b><small>Vidéos, sous-titres et jaquettes</small></span></div><div class="mrow" data-a="link"><span class="mi">${ICON.link}</span><span class="mt"><b>Depuis un lien (m3u8)</b><small>Page web, liste M3U ou fichier m3u8 : vidéos et jaquettes extraites</small></span></div></div><div class="mact"><button class="btn ghost" data-close>Annuler</button></div>`,m=>{
   const prev=m.parentElement.onclick;m.parentElement.onclick=e=>{prev(e);const a=e.target.closest("[data-a]");if(!a)return;closeModal();if(a.dataset.a==="link")openLinkImport("films");else{const f=$("#fileIn");f.accept=META.films.acc;f.click()}}})}
+/* Image « vide » : fond noir étoilé, uni, logo du lecteur… Une vraie jaquette contient de l'image : on la distingue par sa luminosité et son contraste. */
+async function imgLooksEmpty(blob){try{const bm=await createImageBitmap(blob),w=48,h=Math.max(8,Math.round(48*bm.height/bm.width)),c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.drawImage(bm,0,0,w,h);const d=x.getImageData(0,0,w,h).data,n=d.length/4;let m=0,q=0,br=0;
+  for(let i=0;i<d.length;i+=4){const l=.3*d[i]+.59*d[i+1]+.11*d[i+2];m+=l;q+=l*l;if(l>70)br++}m/=n;const sd=Math.sqrt(Math.max(0,q/n-m*m));return(m<16&&br/n<.06)||sd<6}catch{return false}}
+/* Choisit la jaquette d'une vidéo : essaie l'image trouvée puis les images de secours. Écarte celles que d'autres films utilisent déjà (image par défaut du lecteur)
+   et celles qui sont vides. Retourne { url, blob } : blob = image téléchargée (lisible hors connexion), url seule = image gardée en ligne, rien = aucune. */
+async function pickCover(x,used){const cands=[x.image,...(x.alts||[])].filter((u,i,a)=>u&&a.indexOf(u)===i&&!(used.get(u)>0));let remote="";
+  for(const u of cands){try{const r=await MGP.fetchBlob(u,{timeout:9000});if(await imgLooksEmpty(r.data))continue;return{url:u,blob:r.data}}catch{if(!remote)remote=u}}
+  return{url:remote,blob:null}}
 async function addStreams(sel,page,withImg,st){const have=await dbAll("films"),seen=new Set(have.filter(f=>f.url).map(f=>f.url)),added=[];let n=0,dup=0,img=0;
+  const used=new Map();have.forEach(f=>{if(f.jaq)used.set(f.jaq,(used.get(f.jaq)||0)+1)});const cnt=new Map();sel.forEach(x=>{if(x.image)cnt.set(x.image,(cnt.get(x.image)||0)+1)});cnt.forEach((c,u)=>{if(c>1)used.set(u,9)});  // même image pour plusieurs films = image générique
   for(const x of sel){if(seen.has(x.url)){dup++;continue}seen.add(x.url);const nm=(x.title||MGP.titleFromUrl(x.url)||"Vidéo").replace(/[\\/:*?"<>|]+/g," ").replace(/\s+/g," ").trim().slice(0,120)||"Vidéo";
-    const id=await dbPut({cat:"films",name:nm+".m3u8",url:x.url,stream:true,type:"application/x-mpegURL",jaq:x.image||"",src:page||"",added:Date.now()});added.push([id,x]);n++}
-  if(withImg&&added.length){let k=0;const work=async()=>{while(k<added.length){const[id,x]=added[k++];if(st)st.textContent="Jaquettes : "+Math.min(k,added.length)+" / "+added.length;if(!x.image)continue;
-      try{const r=await MGP.fetchBlob(x.image,{timeout:9000});await dbPut({id:-1000-id,cat:"thumb",tid:id,name:"j",blob:r.data,custom:true});TH.set(id,r.data);img++}catch{/* l'adresse de l'image reste utilisée en ligne */}}};await Promise.all([work(),work(),work(),work()])}
+    const id=await dbPut({cat:"films",name:nm+".m3u8",url:x.url,stream:true,type:"application/x-mpegURL",jaq:"",src:page||"",added:Date.now()});added.push([id,x]);n++}
+  if(withImg&&added.length){let k=0;const work=async()=>{while(k<added.length){const pair=added[k++],[id,x]=pair;if(st)st.textContent="Jaquettes : "+Math.min(k,added.length)+" / "+added.length;
+      const c=x.pre||await pickCover(x,used);x.cover=c.url||"";if(c.url){used.set(c.url,(used.get(c.url)||0)+1);const rec=(await dbAll("films")).find(f=>f.id===id);if(rec){rec.jaq=c.url;await dbPut(rec)}}
+      if(c.blob){await dbPut({id:-1000-id,cat:"thumb",tid:id,name:"j",blob:c.blob,custom:true});TH.set(id,c.blob);img++}}};await Promise.all([work(),work(),work(),work()])}
+  else for(const[id,x]of added){const u=x.image&&!(used.get(x.image)>0)&&!(cnt.get(x.image)>1)?x.image:"";if(u){x.cover=u;const rec=(await dbAll("films")).find(f=>f.id===id);if(rec){rec.jaq=u;await dbPut(rec)}}}
   return{n,dup,img,added}}
 /* Image prise dans la vidéo elle-même (à 10 % de la durée, ou 2 s) : sert de jaquette quand ni la page ni le lien n'en donnent.
    Ne marche que si le serveur du flux autorise la lecture de l'image (CORS) ; sinon renvoie null sans rien casser. */
@@ -1349,18 +1360,20 @@ function frameThumb(url,ms){return new Promise(res=>{let done=0;const v=document
   v.onseeked=grab;v.onloadeddata=()=>{if(!isFinite(v.duration)||v.duration<=1)setTimeout(grab,400)};v.src=url;v.load()})}
 async function fillStreamCovers(list){let n=0;for(const[id,x]of list.slice(0,12)){const b=await frameThumb(x.url);if(b){await dbPut({id:-1000-id,cat:"thumb",tid:id,name:"j",blob:b});TH.set(id,b);n++}}return n}
 /* Menu d'un film en ligne : retrouve la jaquette et le titre depuis la page d'origine, sinon une image de la vidéo. */
-async function refreshStream(it){toast("Recherche de la jaquette et du titre…");let title="",image="",blob=null,got=[];
+async function refreshStream(it){toast("Recherche de la jaquette et du titre…");let title="",cand=null,got=[];
   try{if(it.src){const r=await MGP.fetchText(it.src),x=MGP.extract(r.data,{url:r.finalUrl||it.src,contentType:r.ct});
       if(!x.items.length&&x.frames&&x.frames.length)for(const f of x.frames){try{const g=await MGP.fetchText(f);x.items.push(...MGP.extract(g.data,{url:g.finalUrl||f,contentType:g.ct}).items)}catch{/* page liée inaccessible */}}
-      const all=MGP.finalize(x.items),m=all.find(i=>i.url===it.url)||(all.length===1?all[0]:null);if(m){title=m.auto?"":m.title;image=m.image}
-      if(all.length<=1){if(x.meta&&!title)title=x.meta.title||"";if(x.meta&&!image)image=x.meta.image||""}}}catch{/* page d'origine inaccessible */}
-  if(!title&&it.url){try{const r=await MGP.fetchText(it.url,{direct:true,timeout:7000}),pl=MGP.parseM3U(r.data,it.url);if(pl.title)title=pl.title}catch{/* playlist illisible */}}
-  if(image){try{blob=(await MGP.fetchBlob(image)).data}catch{/* adresse gardée, image affichée en ligne */}}
-  if(!image&&!blob){blob=await frameThumb(it.url);if(blob)got.push("image tirée de la vidéo")}
+      let all=MGP.finalize(x.items),m=all.find(i=>i.url===it.url)||(all.length===1?all[0]:null);
+      if(all.length<=1){m=m||{url:it.url,title:"",image:"",auto:true,alts:[]};MGP.applyMeta([m],x.meta)}
+      if(m){title=m.auto?"":m.title;cand=m}}}catch{/* page d'origine inaccessible */}
+  if(!title&&it.url){try{const r=await MGP.fetchText(it.url,{direct:true,timeout:7000}),pl=MGP.parseM3U(r.data,it.url);if(pl.title&&!MGP.weakTitle(pl.title))title=pl.title}catch{/* playlist illisible */}}
+  const used=new Map();(await dbAll("films")).forEach(f=>{if(f.jaq&&f.id!==it.id)used.set(f.jaq,(used.get(f.jaq)||0)+1)});
+  const c=cand?await pickCover(cand,used):{url:"",blob:null};let blob=c.blob;
+  if(!c.url&&!blob){blob=await frameThumb(it.url);if(blob)got.push("image tirée de la vidéo")}
   const rec=(await dbAll("films")).find(f=>f.id===it.id);if(!rec)return toast("Film introuvable");
   if(title){rec.name=title.replace(/[\\/:*?"<>|]+/g," ").replace(/\s+/g," ").trim().slice(0,120)+".m3u8";got.push("titre")}
-  if(image){rec.jaq=image;got.push("jaquette")}
-  if(title||image)await dbPut(rec);if(blob){await dbPut({id:-1000-it.id,cat:"thumb",tid:it.id,name:"j",blob,custom:!!image&&!!blob&&!got.includes("image tirée de la vidéo")});TH.set(it.id,blob)}
+  if(c.url){rec.jaq=c.url;got.push("jaquette")}
+  if(title||c.url)await dbPut(rec);if(blob){await dbPut({id:-1000-it.id,cat:"thumb",tid:it.id,name:"j",blob,custom:!!c.blob});TH.set(it.id,blob)}
   toast(got.length?"Récupéré : "+[...new Set(got)].join(", "):"Rien trouvé : ni la page d'origine ni la vidéo ne donnent de jaquette ou de titre");renderLib()}
 
 /* --- fenêtre « extraire depuis un lien » (films et chaînes) --- */
@@ -1372,6 +1385,8 @@ function openLinkImport(mode){const tv=mode==="tv";let found=[],page="",busy=fal
       <p class="msub">Le navigateur bloque parfois la lecture d\u2019une page d\u2019un autre site. Vous pouvez coller son code source (ou le contenu de la liste), ouvrir un fichier enregistré, ou utiliser un relais.</p>
       <textarea class="ptxt" id="liT" rows="4" placeholder="Code source de la page, contenu .m3u / .m3u8 ou JSON" style="width:100%"></textarea>
       <button class="btn ghost" data-file style="margin:8px 0">Ouvrir un fichier…</button>
+      <p class="msub" style="margin-top:8px">Si le lien est celui d\u2019un lecteur (le titre y est souvent « HD »), indiquez la page du film : le titre et la jaquette seront repris de cette page.</p>
+      <input class="ptxt" id="liR" type="url" inputmode="url" autocapitalize="off" placeholder="Page du film (facultatif) : https://…" value="" style="width:100%;margin-bottom:8px">
       <input class="ptxt" id="liP" placeholder="Relais personnalisé (facultatif) : https://relais.exemple/?u={url}" value="${esc(cfg("proxyTpl")||"")}" style="width:100%">
       <p class="msub" style="margin-top:8px">${window.MGSYNC_PROXY&&window.MGSYNC_PROXY()?"Le serveur MG de cette tablette est utilisé automatiquement si l\u2019accès direct échoue.":"Astuce : une fois la tablette appairée au serveur MG (Réglages > Synchronisation), celui-ci récupère les pages que le navigateur refuse."}</p></details>
     ${tv?"":'<label class="liimg"><input type="checkbox" id="liImg" checked> Enregistrer les jaquettes sur la tablette (visibles hors connexion)</label><p class="msub" style="margin:0 0 6px">Titre et jaquette sont repris de la page du lien. Un lien m3u8 seul n\u2019en contient pas : une image de la vidéo est alors utilisée si le site l\u2019autorise.</p>'}
@@ -1380,21 +1395,29 @@ function openLinkImport(mode){const tv=mode==="tv";let found=[],page="",busy=fal
   const st=m.querySelector("#liSt"),res=m.querySelector("#liRes"),go=m.querySelector("[data-go]"),sq=tv?" sq":"";let stage="in";
   const sel=()=>[...m.querySelectorAll("[data-k]")].filter(c=>c.checked).map(c=>{const i=+c.dataset.k;return{...found[i],title:(m.querySelector('[data-t="'+i+'"]').value||found[i].title).trim()}});
   const cnt=()=>{const n=sel().length;go.textContent=stage==="res"?(n?"Ajouter "+n+(tv?" chaîne"+(n>1?"s":""):" à Films & Séries"):"Rien de sélectionné"):"Analyser";go.disabled=stage==="res"&&!n;const a=m.querySelector("#liAll");if(a)a.checked=n===found.length};
-  const show=()=>{stage="res";res.innerHTML=`<div class="lihead"><label><input type="checkbox" id="liAll" checked> Tout sélectionner</label><span>${plural(found.length,tv?"chaîne trouvée":"vidéo trouvée",tv?"chaînes trouvées":"vidéos trouvées")}</span></div>`+found.map((x,i)=>`<div class="lir${sq}"><input type="checkbox" data-k="${i}" checked><span class="lith">${x.image?`<img src="${esc(x.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:`<i>${tv?ICON.tv:ICON.video}</i>`}</span><span class="lit"><input class="ptxt" data-t="${i}" value="${esc(x.title)}"><small>${esc((x.group?x.group+" · ":"")+hostOf(x.url))}</small></span></div>`).join("");cnt();res.scrollTop=0};
+  /* Vérifie les jaquettes en arrière-plan : une image vide ou commune à plusieurs films est remplacée par l'image de secours (ou retirée) dans l'aperçu. */
+  const refine=async()=>{const lib=await dbAll("films"),used=new Map();lib.forEach(f=>{if(f.jaq)used.set(f.jaq,(used.get(f.jaq)||0)+1)});let k=0;const list=found.map((x,i)=>[x,i]).filter(([x])=>x.image||(x.alts&&x.alts.length)).slice(0,40);
+    const work=async()=>{while(k<list.length){const[x,i]=list[k++];const c=await pickCover(x,used);x.pre=c;if(c.url!==x.image){x.image=c.url;const th=m.querySelector('[data-k="'+i+'"]');const box=th&&th.parentElement.querySelector(".lith");if(box){box.innerHTML=c.url?`<img src="${esc(c.url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:`<i>${tv?ICON.tv:ICON.video}</i>`}}}};
+    if(!tv)await Promise.all([work(),work(),work(),work()])};
+  const show=()=>{stage="res";res.innerHTML=`<div class="lihead"><label><input type="checkbox" id="liAll" checked> Tout sélectionner</label><span>${plural(found.length,tv?"chaîne trouvée":"vidéo trouvée",tv?"chaînes trouvées":"vidéos trouvées")}</span></div>`+found.map((x,i)=>`<div class="lir${sq}"><input type="checkbox" data-k="${i}" checked><span class="lith">${x.image?`<img src="${esc(x.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:`<i>${tv?ICON.tv:ICON.video}</i>`}</span><span class="lit"><input class="ptxt" data-t="${i}" value="${esc(x.title)}"><small>${x.auto?"<b style=\"color:#fbbf24\">Titre à vérifier</b> · ":""}${esc((x.group?x.group+" · ":"")+hostOf(x.url))}</small></span></div>`).join("");cnt();res.scrollTop=0;refine().catch(()=>{})};
   const err=e=>{const r=e.reasons||[];st.innerHTML=`<b style="color:#f87171">${esc(e.message||"Échec")}</b>`+(r.length?`<br><small>${esc(r.join(" · "))}</small><br>Essayez de coller le code source dans « Si le site refuse l\u2019accès », ou appairez la tablette au serveur MG.`:"")};
   const analyze=async()=>{if(busy)return;busy=true;go.disabled=true;res.innerHTML="";found=[];stage="in";const url=m.querySelector("#liU").value.trim(),txt=m.querySelector("#liT").value.trim();setCfg({proxyTpl:m.querySelector("#liP").value.trim()});
     try{let data=txt,ct="",fin=url;
       if(!txt){if(!/^https?:\/\//i.test(url))throw new Error("Indiquez une adresse commençant par http:// ou https://");st.textContent="Récupération de la page…";const r=await MGP.fetchText(url);data=r.data;ct=r.ct;fin=r.finalUrl||url;LS.set("mg.li.url",url);if(r.via!=="direct")toast("Page récupérée via "+(r.via==="serveur"?"le serveur MG":"le relais"))}
       st.textContent="Analyse…";let r=MGP.extract(data,{url:fin,contentType:ct});
       if(!r.items.length&&r.frames&&r.frames.length&&!txt){for(const f of r.frames){st.textContent="Analyse d\u2019une page liée…";try{const g=await MGP.fetchText(f),x=MGP.extract(g.data,{url:g.finalUrl||f,contentType:g.ct});r.items.push(...x.items)}catch{/* page liée inaccessible */}}r.items=MGP.finalize(r.items)}
-      MGP.applyMeta(r.items,r.meta);found=r.items;page=fin;
+      MGP.applyMeta(r.items,r.meta);
+      const ref=m.querySelector("#liR").value.trim();
+      if(ref&&/^https?:\/\//i.test(ref)&&r.items.length===1){st.textContent="Lecture de la page du film…";try{const g=await MGP.fetchText(ref),x=MGP.extract(g.data,{url:g.finalUrl||ref,contentType:g.ct});r.items[0].auto=true;r.items[0].title="";const pick=x.items.length===1?x.items:null;if(pick&&pick[0].title&&!pick[0].auto){r.items[0].title=pick[0].title;r.items[0].auto=false}if(x.meta)MGP.applyMeta(r.items,x.meta);if(r.items[0].auto&&!r.items[0].title)r.items[0].title=MGP.titleFromUrl(r.items[0].url);page=g.finalUrl||ref}catch(e2){toast("Page du film inaccessible : "+(e2.message||"").slice(0,80))}}
+      const ic=new Map();r.items.forEach(x=>{if(x.image)ic.set(x.image,(ic.get(x.image)||0)+1)});r.items.forEach(x=>{if(x.image&&ic.get(x.image)>1&&r.items.length>1){x.alts=(x.alts||[]).filter(u=>u!==x.image);x.image=""}});   // même image pour tous : ce n'est pas une jaquette
+      found=r.items;if(!ref)page=fin;
       if(!found.length){st.innerHTML=`<b>${esc(r.note||"Rien trouvé.")}</b><br><small>Les pages construites par JavaScript ne montrent pas leurs vidéos dans leur code : essayez un lien direct vers la liste ou le fichier .m3u8, ou collez le code source affiché par le navigateur après chargement.</small>`}
       else{st.textContent=(r.kind==="list"?"Liste M3U : ":r.kind==="json"?"Données JSON : ":r.kind==="hls"?"Flux unique : ":"Page web : ")+plural(found.length,tv?"chaîne":"vidéo",tv?"chaînes":"vidéos")+". Vérifiez les titres, décochez ce que vous ne voulez pas.";show()}
     }catch(e){err(e)}finally{busy=false;go.disabled=stage==="res"&&!sel().length}};
   go.onclick=async()=>{if(stage==="in")return analyze();const s=sel();if(!s.length||busy)return;busy=true;go.disabled=true;
     try{if(tv){const x=importTv(s);closeModal();toast(plural(x.n,"chaîne ajoutée","chaînes ajoutées")+(x.d?" · "+plural(x.d,"déjà présente","déjà présentes"):""));renderLib()}
       else{const wi=m.querySelector("#liImg").checked,x=await addStreams(s,page,wi,st);closeModal();toast(plural(x.n,"vidéo ajoutée","vidéos ajoutées")+(x.img?" · "+plural(x.img,"jaquette","jaquettes"):"")+(x.dup?" · "+plural(x.dup,"déjà présente","déjà présentes"):""));renderLib();
-        const nj=wi?x.added.filter(([,y])=>!y.image):[];if(nj.length)fillStreamCovers(nj).then(n=>{if(n){toast(plural(n,"jaquette créée à partir de la vidéo","jaquettes créées à partir des vidéos"));if(cat==="films")renderLib()}})}
+        const nj=wi?x.added.filter(([,y])=>!y.cover):[];if(nj.length)fillStreamCovers(nj).then(n=>{if(n){toast(plural(n,"jaquette créée à partir de la vidéo","jaquettes créées à partir des vidéos"));if(cat==="films")renderLib()}})}
     }catch(e){err(e);busy=false;go.disabled=false}};
   m.addEventListener("change",e=>{if(e.target.id==="liAll"){m.querySelectorAll("[data-k]").forEach(c=>c.checked=e.target.checked);cnt()}else if(e.target.matches("[data-k]"))cnt()});
   const prev=m.parentElement.onclick;m.parentElement.onclick=e=>{prev(e);if(e.target.closest("[data-file]")){const fi=document.createElement("input");fi.type="file";fi.accept=".m3u,.m3u8,.html,.htm,.json,.txt,text/*,application/json";fi.onchange=async()=>{const f=fi.files[0];if(f){m.querySelector("#liT").value=await f.text();m.querySelector("#liU").value=m.querySelector("#liU").value||"";analyze()}};fi.click()}};
@@ -1886,7 +1909,7 @@ new MutationObserver(ms=>{for(const m of ms){const t=m.type==="characterData"?m.
 mqScan(document);window.MQ_READY=true;
 
 /* ---------- Réglages ---------- */
-const APP_VER="4.0",APP_BUILD=37;
+const APP_VER="4.0",APP_BUILD=38;
 /* ---------- Mise à jour de l'application ---------- */
 let UPD_T=0,updating=false;
 function showUpdateBar(remote){if($("#updbar"))return;const b=document.createElement("div");b.id="updbar";b.className="updbar";

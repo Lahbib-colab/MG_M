@@ -16,6 +16,12 @@
   const absUrl = (u, base) => { try { u = decodeEnt(String(u).trim()); if (!u || /^(javascript|data|blob|about):/i.test(u)) return ""; return new URL(u, base || undefined).href; } catch { return ""; } };
   const isHttp = u => /^https?:\/\//i.test(u || "");
   const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
+  /* Un « titre » qui n'en est pas un : libellé de qualité (HD, 720p), de serveur, de langue ou mot générique de lecteur. */
+  const WEAK = /^(hd|sd|fhd|uhd|4k|2k|8k|auto|automatique|default|defaut|défaut|source|original|hls|m3u8|mp4|video|vidéo|stream|streaming|live|direct|high|low|medium|normal|main|backup|primary|secondary|server|serveur|lecteur|player|embed|play|lire|loading|chargement|untitled|index|home|accueil|vf|vo|vostfr|vf ?hd|vf ?sd|multi|fr|en|\d{3,4}p?|\d+ ?(k|m)bps|(server|serveur|lecteur|player|source|video|vidéo|hd|sd) ?\d{1,2}|(vf|vostfr|vo) ?\d?)$/i;
+  const weakTitle = t => { t = String(t || "").replace(/\s+/g, " ").trim(); return t.length < 3 || WEAK.test(t) || /^[\d\W_]+$/.test(t); };
+  /* Une image qui ne représente pas le film : image par défaut du lecteur, logo, fond, sprite… (d'après son adresse). */
+  const GENERIC_IMG = /(?:^|[\/_.-])(placeholder|default|defaut|blank|noimage|no-image|no_image|nopic|loading|loader|spinner|sprite|logo|favicon|banner-?ad|stars?|starfield|bg|background|fond|black|dark|cover-?default|poster-?default|thumb-?default|player|jwplayer|videojs|spacer|pixel|1x1)(?:[\/_.-]|$)/i;
+  const genericImg = u => GENERIC_IMG.test(String(u || "").split("?")[0]);
   const clean = s => decodeEnt(String(s || "")).replace(/\s+/g, " ").trim().slice(0, 140);
   /* Un lien de flux HLS : extension .m3u8 ou .m3u (avec ou sans paramètres), ou « m3u8 » dans l'adresse. */
   const isM3u8 = u => /\.m3u8?(?:[?#&]|$)|m3u8/i.test(String(u || ""));
@@ -31,11 +37,21 @@
     m = t.match(/^([^|\-–—·»:]{2,40})\s+[|\-–—·»:]\s+(.*)$/); if (m && hit(m[1])) return m[2].trim();
     return t;
   }
+  /* Titre d'une page de streaming : « Regarder Mon film en streaming VF - Site » -> « Mon film ». Prudent : jamais plus de 2 caractères perdus. */
+  function pageTitle(t, site, host) {
+    let x = cleanTitle(t, site, host); if (!x) return "";
+    const y = x.replace(/^(regarder|voir|revoir|t[ée]l[ée]charger|streaming)\s*[:\-–]?\s+(?:le\s+film\s+|la\s+s[ée]rie\s+|en\s+streaming\s+)?/i, "")
+      .replace(/\s*[-–|:·(\[]?\s*(?:en\s+)?(?:streaming|stream|t[ée]l[ée]chargement|download)\b.*$/i, "")
+      .replace(/\s*[-–|·(\[]\s*(?:film\s+)?complet\b.*$/i, "").replace(/\s+film\s+complet\b.*$/i, "").replace(/\s*[-–|·(\[]\s*(?:vf|vostfr|vo|hd|fhd|1080p|720p)(?:\s+(?:vf|vostfr|vo|hd))*\s*[)\]]?\s*$/i, "").trim();
+    return weakTitle(y) ? (weakTitle(x) ? "" : x) : y;
+  }
   function titleFromUrl(u) {
     try {
       const segs = new URL(u).pathname.split("/").filter(Boolean).map(s => { try { return decodeURIComponent(s); } catch { return s; } });
+      const idLike = x => /^[0-9a-f]{12,}$/i.test(x) || /^\d{5,}$/.test(x) || /^[A-Za-z0-9_-]{22,}$/.test(x) && !/[ _-].*[ _-]/.test(x) || /^(hls\d*|v\d+|cdn\d*|vod|media|content|files?|uploads?|stream\d*)$/i.test(x);
       let n = segs.pop() || ""; n = n.replace(/\.[a-z0-9]{2,5}$/i, "");
-      while (/^(index|master|playlist|manifest|chunklist|main|stream|live|hls|video|default|prog_index|mono|stereo)$/i.test(n) && segs.length) n = segs.pop();
+      while ((/^(index|master|playlist|manifest|chunklist|main|stream|live|hls|video|default|prog_index|mono|stereo)$/i.test(n) || idLike(n)) && segs.length) n = segs.pop();
+      if (idLike(n)) return hostOf(u);
       n = n.replace(/[-_.+]+/g, " ").trim();
       return n ? n.charAt(0).toUpperCase() + n.slice(1) : hostOf(u);
     } catch { return ""; }
@@ -121,8 +137,8 @@
       let image = "", title = "";
       for (const o of h.ctx) {
         for (const k of Object.keys(o)) {
-          if (!image && IMG_KEY.test(k)) { const v = pickStr(o[k]); if (looksUrl(v)) image = absUrl(v, base); }
-          if (!title && TITLE_KEY.test(k) && typeof o[k] === "string" && o[k].trim() && !isM3u8(o[k])) title = clean(o[k]);
+          if (!image && IMG_KEY.test(k)) { const v = pickStr(o[k]); if (looksUrl(v) && !genericImg(v)) image = absUrl(v, base); }
+          if (!title && TITLE_KEY.test(k) && typeof o[k] === "string" && o[k].trim() && !isM3u8(o[k]) && !weakTitle(o[k])) title = clean(o[k]);
         }
         if (image && title) break;
       }
@@ -143,8 +159,8 @@
       const raw = unesc(m[0]); let url = absUrl(raw.startsWith("//") ? "https:" + raw : raw, base); if (!isHttp(url)) continue;
       const a = Math.max(0, m.index - 700), b = Math.min(text.length, m.index + m[0].length + 700), win = text.slice(a, b), at = m.index - a;
       const best = (re, valid) => { let bm, d = 1e9, v = ""; re.lastIndex = 0; while ((bm = re.exec(win))) { const val = unesc(bm[2]); if (valid && !valid(val)) continue; const dist = Math.abs(bm.index - at); if (dist < d) { d = dist; v = val; } } return v; };
-      const image = best(/["']?(poster|image|thumbnail|thumb|cover|preview|logo|jaquette|artwork|img)["']?\s*[:=]\s*["']([^"'\s]+)["']/gi, v => looksUrl(v));
-      const title = best(/["']?(title|name|titre|label)["']?\s*[:=]\s*["']([^"']{2,140})["']/gi, v => !isM3u8(v) && !looksUrl(v));
+      const image = best(/["']?(poster|image|thumbnail|thumb|cover|preview|jaquette|artwork|img)["']?\s*[:=]\s*["']([^"'\s]+)["']/gi, v => looksUrl(v) && !genericImg(v));
+      const title = best(/["']?(title|name|titre)["']?\s*[:=]\s*["']([^"']{2,140})["']/gi, v => !isM3u8(v) && !looksUrl(v) && !weakTitle(v));
       out.push({ url, title: clean(title), image: image ? absUrl(image, base) : "" });
     }
     return out;
@@ -155,7 +171,7 @@
   function srcsetFirst(v) { return (String(v || "").split(",")[0] || "").trim().split(/\s+/)[0] || ""; }
   function imgOfEl(el) {
     if (!el || !el.getAttribute) return "";
-    for (const k of LAZY) { const v = el.getAttribute(k); if (v && (looksUrl(v)) && (el.tagName === "IMG" || k !== "src") && !/^data:/i.test(v)) return v; }
+    for (const k of LAZY) { const v = el.getAttribute(k); if (v && (looksUrl(v)) && (el.tagName === "IMG" || k !== "src") && !/^data:/i.test(v) && !genericImg(v)) return v; }
     const ss = el.getAttribute("srcset") || el.getAttribute("data-srcset"); if (ss) return srcsetFirst(ss);
     const st = el.getAttribute("style"); if (st) { const m = st.match(/url\(["']?([^"')]+)/i); if (m) return m[1]; }
     return "";
@@ -173,11 +189,11 @@
     return "";
   }
   function titleIn(node, self) {
-    for (const k of ["data-title", "title", "aria-label", "data-name", "alt"]) { const v = node.getAttribute && node.getAttribute(k); if (v && v.trim().length > 1 && !isM3u8(v)) return v; }
+    for (const k of ["data-title", "title", "aria-label", "data-name", "alt"]) { const v = node.getAttribute && node.getAttribute(k); if (v && !isM3u8(v) && !weakTitle(v)) return v; }
     if (self) return "";
     const q = node.querySelector && node.querySelector("[itemprop=name],h1,h2,h3,h4,h5,[class*=title],[class*=name],a[title],img[alt]");
-    if (q) { const t = q.getAttribute("title") || q.getAttribute("alt") || q.textContent; if (t && t.trim().length > 1 && !isM3u8(t)) return t; }
-    if (/^(A|LI|FIGURE|ARTICLE)$/.test(node.tagName)) { const t = (node.textContent || "").replace(/\s+/g, " ").trim(); if (t.length > 1 && t.length < 160 && !isM3u8(t)) return t; }
+    if (q) { const t = q.getAttribute("title") || q.getAttribute("alt") || q.textContent; if (t && !isM3u8(t) && !weakTitle(t)) return t; }
+    if (/^(A|LI|FIGURE|ARTICLE)$/.test(node.tagName)) { const t = (node.textContent || "").replace(/\s+/g, " ").trim(); if (t.length < 160 && !isM3u8(t) && !weakTitle(t)) return t; }
     return "";
   }
   function fromDom(html, pageUrl) {
@@ -211,17 +227,22 @@
       if (/json/.test(type) || /^\s*[\[{]/.test(t)) { try { items.push(...fromJson(JSON.parse(t), base)); done = true; } catch { /* pas du JSON pur */ } }
       if (!done) items.push(...scanText(t, base));
     }
-    /* 3) métadonnées de la page : og:title / og:image, JSON-LD (Movie, VideoObject, Episode…), h1, <title> */
+    /* 3) métadonnées de la page : og:title / og:image, JSON-LD (Movie, VideoObject, Episode…), twitter:, h1, <title> */
     const mc = n => { const e = doc.querySelector(n); return e ? e.getAttribute("content") || e.getAttribute("href") || "" : ""; };
-    const site = mc('meta[property="og:site_name"]') || mc('meta[name="application-name"]');
-    let mImg = mc('meta[property="og:image"]') || mc('meta[property="og:image:url"]') || mc('meta[name="twitter:image"]') || mc('link[rel="image_src"]'), mTitle = mc('meta[property="og:title"]') || mc('meta[name="twitter:title"]');
+    const site = mc('meta[property="og:site_name"]') || mc('meta[name="application-name"]'), host = hostOf(pageUrl);
+    const titles = [], imgs = [];
+    const addT = v => { const c = pageTitle(v, site, host); if (c && !weakTitle(c) && !(site && c.toLowerCase() === String(site).toLowerCase()) && !titles.includes(c)) titles.push(c); };
+    const addI = v => { v = v && !/^data:/i.test(v) ? absUrl(v, base) : ""; if (v && !genericImg(v) && !imgs.includes(v)) imgs.push(v); };
+    addT(mc('meta[property="og:title"]')); addI(mc('meta[property="og:image"]')); addI(mc('meta[property="og:image:url"]'));
     for (const sc of doc.querySelectorAll('script[type="application/ld+json"]')) {
-      try { const walk = n => { if (Array.isArray(n)) return n.forEach(walk); if (n && typeof n === "object") { if (/^(Movie|VideoObject|Episode|TVEpisode|TVSeries|CreativeWork)$/i.test([].concat(n["@type"] || []).join(" ").split(" ").find(x => /^(Movie|VideoObject|Episode|TVEpisode|TVSeries|CreativeWork)$/i.test(x)) || "")) { if (!mTitle && typeof n.name === "string") mTitle = n.name; const im = pickStr(n.image) || pickStr(n.thumbnailUrl); if (!mImg && im) mImg = im; } Object.values(n).forEach(walk); } }; walk(JSON.parse(sc.textContent)); } catch { /* JSON-LD invalide */ }
+      try { const isMedia = n => [].concat(n["@type"] || []).some(x => /^(Movie|VideoObject|Episode|TVEpisode|TVSeries|CreativeWork)$/i.test(x));
+        const walk = n => { if (Array.isArray(n)) return n.forEach(walk); if (n && typeof n === "object") { if (isMedia(n)) { if (typeof n.name === "string") addT(n.name); addI(pickStr(n.image)); addI(pickStr(n.thumbnailUrl)); } Object.values(n).forEach(walk); } }; walk(JSON.parse(sc.textContent)); } catch { /* JSON-LD invalide */ }
     }
-    if (!mTitle) { const h1 = doc.querySelector("h1"); mTitle = (doc.title || "") || (h1 ? h1.textContent : ""); }
-    const meta = { title: cleanTitle(mTitle, site, hostOf(pageUrl)), image: mImg && !/^data:/i.test(mImg) ? absUrl(mImg, base) : "", site };
+    addT(mc('meta[name="twitter:title"]')); addI(mc('meta[name="twitter:image"]')); addI(mc('link[rel="image_src"]'));
+    const h1 = doc.querySelector("h1"); if (h1) addT(h1.textContent); addT(doc.title || "");
+    const meta = { title: titles[0] || "", titles, image: imgs[0] || "", images: imgs, site };
     const uniq = new Set(items.map(i => i.url));
-    if (uniq.size === 1) for (const i of items) { if (!i.image && meta.image) i.image = meta.image; if (!i.title && meta.title) i.title = meta.title; }
+    if (uniq.size === 1) MGP.applyMeta(items, meta);
     /* 4) pages liées (iframe / lecteur intégré) : renvoyées à l'appelant pour une analyse en un niveau */
     const frames = [...doc.querySelectorAll("iframe[src],iframe[data-src]")].map(f => absUrl(f.getAttribute("src") || f.getAttribute("data-src"), base)).filter(isHttp);
     return { items, frames: [...new Set(frames)].slice(0, 4), pageTitle: clean(doc.title || ""), meta };
@@ -232,8 +253,8 @@
     for (const it of items) {
       if (!it || !isHttp(it.url)) continue;
       const prev = map.get(it.url);
-      if (!prev) map.set(it.url, { url: it.url, title: it.title || "", image: it.image || "", group: it.group || "", auto: !!it.auto });
-      else { if (!prev.title && it.title) prev.title = it.title; if (!prev.image && it.image) prev.image = it.image; if (!prev.group && it.group) prev.group = it.group; }
+      if (!prev) map.set(it.url, { url: it.url, title: it.title || "", image: it.image || "", group: it.group || "", auto: !!it.auto, alts: (it.alts || []).slice() });
+      else { if (!prev.title && it.title) prev.title = it.title; if (!prev.image && it.image) prev.image = it.image; if (!prev.group && it.group) prev.group = it.group; if (it.alts) prev.alts = [...new Set([...(prev.alts || []), ...it.alts])]; }
     }
     const out = [...map.values()];
     out.forEach(i => { if (!i.title) { i.title = titleFromUrl(i.url) || hostOf(i.url); i.auto = true; } });
@@ -262,7 +283,14 @@
   MGP.extract = extract;
   MGP.finalize = items => finalize(items, "");
   /* Une seule vidéo trouvée : elle prend le titre et l'image de la page qui la contient (le titre déduit de l'adresse est remplacé). */
-  MGP.applyMeta = (items, meta) => { if (meta && items.length === 1) { const i = items[0]; if (meta.title && (!i.title || i.auto)) { i.title = meta.title; i.auto = false; } if (!i.image && meta.image) i.image = meta.image; } return items; };
+  MGP.applyMeta = (items, meta) => {
+    if (!meta || items.length !== 1) return items; const i = items[0], imgs = meta.images || (meta.image ? [meta.image] : []);
+    if (meta.title && (!i.title || i.auto || weakTitle(i.title))) { i.title = meta.title; i.auto = false; }
+    if (!i.image && imgs[0]) i.image = imgs[0];
+    i.alts = [...new Set([...(i.alts || []), ...imgs.filter(x => x !== i.image)])];   // autres images candidates, essayées si la première est une image par défaut
+    return items;
+  };
+  MGP.weakTitle = weakTitle; MGP.genericImg = genericImg; MGP.pageTitle = pageTitle;
 
   /* ============================================================ réseau avec repli */
   MGP.net = { proxy: null, tpl: null };   // proxy() -> { base, id, token } | null ; tpl() -> "https://relais/?u={url}"
