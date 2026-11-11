@@ -22,6 +22,15 @@
   MGP.isHls = u => /\.m3u8(?:[?#&]|$)|m3u8/i.test(String(u || ""));
   MGP.hostOf = hostOf;
 
+  /* « Mon film | MonSite » ou « MonSite - Mon film » -> « Mon film » (seulement si l'autre partie ressemble au nom du site). */
+  function cleanTitle(t, site, host) {
+    t = clean(t); if (!t) return "";
+    const h = String(host || "").toLowerCase().replace(/^www\./, ""), names = [site, h, h.replace(/\.[a-z]{2,}$/i, "")].filter(Boolean).map(x => String(x).toLowerCase());
+    const hit = x => names.some(n => n && (x.toLowerCase().includes(n) || n.includes(x.toLowerCase())));
+    let m = t.match(/^(.*?)\s+[|\-–—·»:]\s+([^|\-–—·»:]{2,40})$/); if (m && hit(m[2])) return m[1].trim();
+    m = t.match(/^([^|\-–—·»:]{2,40})\s+[|\-–—·»:]\s+(.*)$/); if (m && hit(m[1])) return m[2].trim();
+    return t;
+  }
   function titleFromUrl(u) {
     try {
       const segs = new URL(u).pathname.split("/").filter(Boolean).map(s => { try { return decodeURIComponent(s); } catch { return s; } });
@@ -45,6 +54,11 @@
   const levelLabel = v => v.h ? v.h + "p" : v.bw ? (v.bw / 1e6).toFixed(1).replace(".", ",") + " Mb/s" : "Qualité";
   MGP.levelLabel = levelLabel;
 
+  function plTitle(L) {
+    const pl = L.find(l => l.startsWith("#PLAYLIST:")); if (pl) return clean(pl.slice(10));
+    for (const l of L) if (l.startsWith("#EXT-X-SESSION-DATA:")) { const a = parseAttrs(l.slice(20)); if (/title|name/i.test(a["data-id"] || "") && a.value) return clean(a.value); }
+    return "";
+  }
   /* Retourne { kind: "master" | "media" | "list" | "unknown", ... } */
   function parseM3U(text, base) {
     text = String(text || "").replace(/^\uFEFF/, "");
@@ -63,13 +77,13 @@
       }
       const seen = new Set(), uniq = variants.filter(v => !seen.has(v.url) && seen.add(v.url));
       uniq.sort((x, y) => (y.h - x.h) || (y.bw - x.bw)); uniq.forEach(v => v.label = levelLabel(v));
-      return { kind: "master", variants: uniq, media };
+      return { kind: "master", variants: uniq, media, title: plTitle(L) };
     }
     if (L.some(l => /^#EXT-X-(TARGETDURATION|MEDIA-SEQUENCE|ENDLIST|PLAYLIST-TYPE|MAP|KEY|PROGRAM-DATE-TIME)/.test(l))) {
       const ended = L.some(l => l.startsWith("#EXT-X-ENDLIST")), vod = L.some(l => /^#EXT-X-PLAYLIST-TYPE:VOD/.test(l));
       let dur = 0, n = 0; for (const l of L) if (l.startsWith("#EXTINF:")) { dur += parseFloat(l.slice(8)) || 0; n++; }
       const key = L.find(l => l.startsWith("#EXT-X-KEY:")), km = key ? (parseAttrs(key.slice(11)).method || "NONE") : "NONE";
-      return { kind: "media", live: !(ended || vod), duration: dur, segments: n, encrypted: km !== "NONE", method: km };
+      return { kind: "media", live: !(ended || vod), duration: dur, segments: n, encrypted: km !== "NONE", method: km, title: plTitle(L) };
     }
     const entries = []; let pend = null, grp = "";
     for (const l of L) {
@@ -197,16 +211,20 @@
       if (/json/.test(type) || /^\s*[\[{]/.test(t)) { try { items.push(...fromJson(JSON.parse(t), base)); done = true; } catch { /* pas du JSON pur */ } }
       if (!done) items.push(...scanText(t, base));
     }
-    /* 3) repli au niveau de la page quand elle ne contient qu'une vidéo */
-    const uniq = new Set(items.map(i => i.url));
-    if (uniq.size === 1) {
-      const meta = n => { const e = doc.querySelector(n); return e ? e.getAttribute("content") || e.getAttribute("href") || "" : ""; };
-      const pImg = meta('meta[property="og:image"]') || meta('meta[name="twitter:image"]') || meta('link[rel="image_src"]'), pT = meta('meta[property="og:title"]') || (doc.title || "") || (doc.querySelector("h1") ? doc.querySelector("h1").textContent : "");
-      for (const i of items) { if (!i.image && pImg) i.image = absUrl(pImg, base); if (!i.title && pT) i.title = clean(pT); }
+    /* 3) métadonnées de la page : og:title / og:image, JSON-LD (Movie, VideoObject, Episode…), h1, <title> */
+    const mc = n => { const e = doc.querySelector(n); return e ? e.getAttribute("content") || e.getAttribute("href") || "" : ""; };
+    const site = mc('meta[property="og:site_name"]') || mc('meta[name="application-name"]');
+    let mImg = mc('meta[property="og:image"]') || mc('meta[property="og:image:url"]') || mc('meta[name="twitter:image"]') || mc('link[rel="image_src"]'), mTitle = mc('meta[property="og:title"]') || mc('meta[name="twitter:title"]');
+    for (const sc of doc.querySelectorAll('script[type="application/ld+json"]')) {
+      try { const walk = n => { if (Array.isArray(n)) return n.forEach(walk); if (n && typeof n === "object") { if (/^(Movie|VideoObject|Episode|TVEpisode|TVSeries|CreativeWork)$/i.test([].concat(n["@type"] || []).join(" ").split(" ").find(x => /^(Movie|VideoObject|Episode|TVEpisode|TVSeries|CreativeWork)$/i.test(x)) || "")) { if (!mTitle && typeof n.name === "string") mTitle = n.name; const im = pickStr(n.image) || pickStr(n.thumbnailUrl); if (!mImg && im) mImg = im; } Object.values(n).forEach(walk); } }; walk(JSON.parse(sc.textContent)); } catch { /* JSON-LD invalide */ }
     }
+    if (!mTitle) { const h1 = doc.querySelector("h1"); mTitle = (doc.title || "") || (h1 ? h1.textContent : ""); }
+    const meta = { title: cleanTitle(mTitle, site, hostOf(pageUrl)), image: mImg && !/^data:/i.test(mImg) ? absUrl(mImg, base) : "", site };
+    const uniq = new Set(items.map(i => i.url));
+    if (uniq.size === 1) for (const i of items) { if (!i.image && meta.image) i.image = meta.image; if (!i.title && meta.title) i.title = meta.title; }
     /* 4) pages liées (iframe / lecteur intégré) : renvoyées à l'appelant pour une analyse en un niveau */
     const frames = [...doc.querySelectorAll("iframe[src],iframe[data-src]")].map(f => absUrl(f.getAttribute("src") || f.getAttribute("data-src"), base)).filter(isHttp);
-    return { items, frames: [...new Set(frames)].slice(0, 4), pageTitle: clean(doc.title || "") };
+    return { items, frames: [...new Set(frames)].slice(0, 4), pageTitle: clean(doc.title || ""), meta };
   }
 
   function finalize(items, pageUrl) {
@@ -214,11 +232,11 @@
     for (const it of items) {
       if (!it || !isHttp(it.url)) continue;
       const prev = map.get(it.url);
-      if (!prev) map.set(it.url, { url: it.url, title: it.title || "", image: it.image || "", group: it.group || "" });
+      if (!prev) map.set(it.url, { url: it.url, title: it.title || "", image: it.image || "", group: it.group || "", auto: !!it.auto });
       else { if (!prev.title && it.title) prev.title = it.title; if (!prev.image && it.image) prev.image = it.image; if (!prev.group && it.group) prev.group = it.group; }
     }
     const out = [...map.values()];
-    out.forEach(i => { if (!i.title) i.title = titleFromUrl(i.url) || hostOf(i.url); });
+    out.forEach(i => { if (!i.title) { i.title = titleFromUrl(i.url) || hostOf(i.url); i.auto = true; } });
     const count = {}; out.forEach(i => count[i.title] = (count[i.title] || 0) + 1);
     const seen = {}; out.forEach(i => { if (count[i.title] > 1) { seen[i.title] = (seen[i.title] || 0) + 1; i.title += " (" + seen[i.title] + ")"; } });
     return out;
@@ -231,18 +249,20 @@
     if (/^#EXTM3U/i.test(t) || (/^#EXT/m.test(t) && /\.m3u8?(?:[?#]|$)/i.test(url)) || /mpegurl/.test(ct)) {
       const p = parseM3U(t, url);
       if (p.kind === "list") return { kind: "list", items: finalize(p.entries.map(e => ({ url: e.url, title: e.name, image: e.logo, group: e.group })), url), frames: [], note: "" };
-      if (p.kind === "master" || p.kind === "media") return { kind: "hls", items: finalize([{ url, title: o.title || "" }], url), frames: [], note: p.kind === "master" ? "Flux unique avec " + p.variants.length + " qualité(s)." : "Flux unique." };
+      if (p.kind === "master" || p.kind === "media") return { kind: "hls", items: finalize([{ url, title: p.title || o.title || "" }], url), frames: [], note: p.kind === "master" ? "Flux unique avec " + p.variants.length + " qualité(s)." : "Flux unique." };
     }
     if (/json/.test(ct) || /^[\[{]/.test(t)) { try { const items = finalize(fromJson(JSON.parse(t), url), url); return { kind: "json", items, frames: [], note: items.length ? "" : "Aucun lien m3u8 dans ces données." }; } catch { /* continue : texte */ } }
     let items = [], frames = [], pageTitle = "";
     const d = (typeof DOMParser !== "undefined") ? fromDom(t, url) : null;
-    if (d) { items = d.items; frames = d.frames; pageTitle = d.pageTitle; } else items = scanText(t, url);
+    let meta = null; if (d) { items = d.items; frames = d.frames; pageTitle = d.pageTitle; meta = d.meta; } else items = scanText(t, url);
     items = finalize(items, url);
     const note = items.length ? "" : "Aucun lien .m3u8 dans le code de cette page.";
-    return { kind: "html", items, frames, pageTitle, note };
+    return { kind: "html", items, frames, pageTitle, note, meta };
   }
   MGP.extract = extract;
   MGP.finalize = items => finalize(items, "");
+  /* Une seule vidéo trouvée : elle prend le titre et l'image de la page qui la contient (le titre déduit de l'adresse est remplacé). */
+  MGP.applyMeta = (items, meta) => { if (meta && items.length === 1) { const i = items[0]; if (meta.title && (!i.title || i.auto)) { i.title = meta.title; i.auto = false; } if (!i.image && meta.image) i.image = meta.image; } return items; };
 
   /* ============================================================ réseau avec repli */
   MGP.net = { proxy: null, tpl: null };   // proxy() -> { base, id, token } | null ; tpl() -> "https://relais/?u={url}"
