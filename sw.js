@@ -1,4 +1,4 @@
-const V = "mg-media-v38";
+const V = "mg-media-v39";
 // Fichiers INDISPENSABLES : tout ou rien. S'il en manque un, la nouvelle version n'est pas installée (l'ancienne continue de marcher)
 // et elle est retentée à la vérification suivante.
 const CORE = ["./", "./index.html", "./sync.js", "./player.js", "./manifest.webmanifest"];

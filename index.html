@@ -731,6 +731,7 @@ html[data-eco] .overlay .vspin,html[data-motion="reduce"] .overlay .vspin{animat
 .liadv{margin:10px 0;border:1px solid var(--line);border-radius:14px;padding:8px 14px;background:var(--chip)}.liadv summary{cursor:pointer;color:var(--acc2);padding:4px 0}
 .liimg{display:flex;gap:10px;align-items:center;margin:8px 0;color:var(--txt2);font-size:15px}
 .lires{max-height:34vh;overflow:auto;margin-top:8px}
+.lires:has(.pk:not([hidden])){max-height:56vh}
 .mp .mact.stick{position:sticky;bottom:-18px;margin:10px -4px -6px;padding:12px 4px 6px;background:var(--minibg);border-top:1px solid var(--line);z-index:2}
 @media (max-width:700px){.overlay .vhud{top:calc(max(2vh,12px) + 64px);right:2.4vw;min-height:0}}
 .lihead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;color:var(--mut);font-size:14px}.lihead label{display:flex;gap:8px;align-items:center;color:var(--txt)}
@@ -738,6 +739,11 @@ html[data-eco] .overlay .vspin,html[data-motion="reduce"] .overlay .vspin{animat
 .lith{flex:none;width:60px;height:86px;border-radius:10px;overflow:hidden;background:rgba(255,255,255,.07);display:grid;place-items:center;color:var(--acc2)}
 .lir.sq .lith{width:54px;height:54px}.lith img{width:100%;height:100%;object-fit:cover}.lith i{font-style:normal}.lith .ico{font-size:26px}
 .lit{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}.lit input{width:100%}.lit small{color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lir{flex-wrap:wrap}.lir .pkb{flex:none}.pk{flex-basis:100%;padding:6px 0 2px}.pk[hidden]{display:none}
+.pkc{display:flex;flex-wrap:wrap;gap:6px}.pkc button{text-align:left;padding:6px 10px;border-radius:12px;border:1px solid var(--line);background:var(--chip);color:var(--txt);max-width:100%}
+.pkc button small,.pki button small{display:block;color:var(--mut);font-size:11px}.pk .dim{opacity:.55}.pk button.on{border-color:var(--acc);background:rgba(47,139,255,.24);opacity:1}
+.pki{display:flex;gap:8px;overflow-x:auto;padding:2px}.pki button{flex:none;width:84px;border:1px solid var(--line);border-radius:10px;background:var(--chip);padding:4px;color:var(--txt);text-align:left}
+.pki img{width:100%;height:110px;object-fit:cover;border-radius:6px;display:block}.pki button.bad img{display:none}.pki button.bad::before{content:"image illisible";display:block;height:110px;font-size:11px;color:var(--mut);padding:6px}
 .lir input[type=checkbox],.lihead input[type=checkbox],.liimg input{width:22px;height:22px;accent-color:var(--acc);flex:none}
 
 /* ---------- Portrait ---------- */
@@ -1337,7 +1343,8 @@ async function imgLooksEmpty(blob){try{const bm=await createImageBitmap(blob),w=
   for(let i=0;i<d.length;i+=4){const l=.3*d[i]+.59*d[i+1]+.11*d[i+2];m+=l;q+=l*l;if(l>70)br++}m/=n;const sd=Math.sqrt(Math.max(0,q/n-m*m));return(m<16&&br/n<.06)||sd<6}catch{return false}}
 /* Choisit la jaquette d'une vidéo : essaie l'image trouvée puis les images de secours. Écarte celles que d'autres films utilisent déjà (image par défaut du lecteur)
    et celles qui sont vides. Retourne { url, blob } : blob = image téléchargée (lisible hors connexion), url seule = image gardée en ligne, rien = aucune. */
-async function pickCover(x,used){const cands=[x.image,...(x.alts||[])].filter((u,i,a)=>u&&a.indexOf(u)===i&&!(used.get(u)>0));let remote="";
+async function pickCover(x,used){if(x.forced&&x.image){try{const r=await MGP.fetchBlob(x.image,{timeout:9000});return{url:x.image,blob:r.data}}catch{return{url:x.image,blob:null}}}
+  const cands=[x.image,...(x.alts||[])].filter((u,i,a)=>u&&a.indexOf(u)===i&&!(used.get(u)>0));let remote="";
   for(const u of cands){try{const r=await MGP.fetchBlob(u,{timeout:9000});if(await imgLooksEmpty(r.data))continue;return{url:u,blob:r.data}}catch{if(!remote)remote=u}}
   return{url:remote,blob:null}}
 async function addStreams(sel,page,withImg,st){const have=await dbAll("films"),seen=new Set(have.filter(f=>f.url).map(f=>f.url)),added=[];let n=0,dup=0,img=0;
@@ -1377,7 +1384,7 @@ async function refreshStream(it){toast("Recherche de la jaquette et du titre…"
   toast(got.length?"Récupéré : "+[...new Set(got)].join(", "):"Rien trouvé : ni la page d'origine ni la vidéo ne donnent de jaquette ou de titre");renderLib()}
 
 /* --- fenêtre « extraire depuis un lien » (films et chaînes) --- */
-function openLinkImport(mode){const tv=mode==="tv";let found=[],page="",busy=false;
+function openLinkImport(mode){const tv=mode==="tv";let found=[],page="",busy=false,lastCand=null,lastDiag="";
   modal(`<h3>${tv?"Importer des chaînes depuis un lien":"Extraire depuis un lien"}</h3>
     <p class="msub">${tv?"Adresse d\u2019une liste M3U ou d\u2019une page web":"Adresse d\u2019une page web, d\u2019une liste M3U ou d\u2019un fichier .m3u8"} : l\u2019application en extrait ${tv?"les chaînes et leurs logos":"les vidéos et leurs jaquettes"}.</p>
     <input class="ptxt" id="liU" type="url" inputmode="url" autocapitalize="off" autocomplete="off" placeholder="https://…" value="${esc(LS.get("mg.li.url",""))}" style="width:100%">
@@ -1391,15 +1398,15 @@ function openLinkImport(mode){const tv=mode==="tv";let found=[],page="",busy=fal
       <p class="msub" style="margin-top:8px">${window.MGSYNC_PROXY&&window.MGSYNC_PROXY()?"Le serveur MG de cette tablette est utilisé automatiquement si l\u2019accès direct échoue.":"Astuce : une fois la tablette appairée au serveur MG (Réglages > Synchronisation), celui-ci récupère les pages que le navigateur refuse."}</p></details>
     ${tv?"":'<label class="liimg"><input type="checkbox" id="liImg" checked> Enregistrer les jaquettes sur la tablette (visibles hors connexion)</label><p class="msub" style="margin:0 0 6px">Titre et jaquette sont repris de la page du lien. Un lien m3u8 seul n\u2019en contient pas : une image de la vidéo est alors utilisée si le site l\u2019autorise.</p>'}
     <div class="msub" id="liSt" style="min-height:1.4em"></div><div class="lires" id="liRes"></div>
-    <div class="mact stick"><button class="btn" data-go>Analyser</button><button class="btn ghost" data-close>Fermer</button></div>`,m=>{
+    <div class="mact stick"><button class="btn" data-go>Analyser</button><button class="btn ghost" data-diag style="display:none">Diagnostic</button><button class="btn ghost" data-close>Fermer</button></div>`,m=>{
   const st=m.querySelector("#liSt"),res=m.querySelector("#liRes"),go=m.querySelector("[data-go]"),sq=tv?" sq":"";let stage="in";
   const sel=()=>[...m.querySelectorAll("[data-k]")].filter(c=>c.checked).map(c=>{const i=+c.dataset.k;return{...found[i],title:(m.querySelector('[data-t="'+i+'"]').value||found[i].title).trim()}});
   const cnt=()=>{const n=sel().length;go.textContent=stage==="res"?(n?"Ajouter "+n+(tv?" chaîne"+(n>1?"s":""):" à Films & Séries"):"Rien de sélectionné"):"Analyser";go.disabled=stage==="res"&&!n;const a=m.querySelector("#liAll");if(a)a.checked=n===found.length};
   /* Vérifie les jaquettes en arrière-plan : une image vide ou commune à plusieurs films est remplacée par l'image de secours (ou retirée) dans l'aperçu. */
-  const refine=async()=>{const lib=await dbAll("films"),used=new Map();lib.forEach(f=>{if(f.jaq)used.set(f.jaq,(used.get(f.jaq)||0)+1)});let k=0;const list=found.map((x,i)=>[x,i]).filter(([x])=>x.image||(x.alts&&x.alts.length)).slice(0,40);
+  const refine=async()=>{const lib=await dbAll("films"),used=new Map();lib.forEach(f=>{if(f.jaq)used.set(f.jaq,(used.get(f.jaq)||0)+1)});let k=0;const list=found.map((x,i)=>[x,i]).filter(([x])=>!x.forced&&(x.image||(x.alts&&x.alts.length))).slice(0,40);
     const work=async()=>{while(k<list.length){const[x,i]=list[k++];const c=await pickCover(x,used);x.pre=c;if(c.url!==x.image){x.image=c.url;const th=m.querySelector('[data-k="'+i+'"]');const box=th&&th.parentElement.querySelector(".lith");if(box){box.innerHTML=c.url?`<img src="${esc(c.url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:`<i>${tv?ICON.tv:ICON.video}</i>`}}}};
     if(!tv)await Promise.all([work(),work(),work(),work()])};
-  const show=()=>{stage="res";res.innerHTML=`<div class="lihead"><label><input type="checkbox" id="liAll" checked> Tout sélectionner</label><span>${plural(found.length,tv?"chaîne trouvée":"vidéo trouvée",tv?"chaînes trouvées":"vidéos trouvées")}</span></div>`+found.map((x,i)=>`<div class="lir${sq}"><input type="checkbox" data-k="${i}" checked><span class="lith">${x.image?`<img src="${esc(x.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:`<i>${tv?ICON.tv:ICON.video}</i>`}</span><span class="lit"><input class="ptxt" data-t="${i}" value="${esc(x.title)}"><small>${x.auto?"<b style=\"color:#fbbf24\">Titre à vérifier</b> · ":""}${esc((x.group?x.group+" · ":"")+hostOf(x.url))}</small></span></div>`).join("");cnt();res.scrollTop=0;refine().catch(()=>{})};
+  const show=()=>{stage="res";res.innerHTML=`<div class="lihead"><label><input type="checkbox" id="liAll" checked> Tout sélectionner</label><span>${plural(found.length,tv?"chaîne trouvée":"vidéo trouvée",tv?"chaînes trouvées":"vidéos trouvées")}</span></div>`+found.map((x,i)=>`<div class="lir${sq}"><input type="checkbox" data-k="${i}" checked><span class="lith">${x.image?`<img src="${esc(x.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:`<i>${tv?ICON.tv:ICON.video}</i>`}</span><span class="lit"><input class="ptxt" data-t="${i}" value="${esc(x.title)}"><small>${x.auto?"<b style=\"color:#fbbf24\">Titre à vérifier</b> · ":""}${esc((x.group?x.group+" · ":"")+hostOf(x.url))}</small></span>${lastCand&&!tv?`<button class="x pkb" data-pick="${i}" aria-label="Choisir le titre et la jaquette parmi ceux de la page">${ICON.dots}</button>`:""}<div class="pk" data-pk="${i}" hidden></div></div>`).join("");cnt();res.scrollTop=0;refine().catch(()=>{})};
   const err=e=>{const r=e.reasons||[];st.innerHTML=`<b style="color:#f87171">${esc(e.message||"Échec")}</b>`+(r.length?`<br><small>${esc(r.join(" · "))}</small><br>Essayez de coller le code source dans « Si le site refuse l\u2019accès », ou appairez la tablette au serveur MG.`:"")};
   const analyze=async()=>{if(busy)return;busy=true;go.disabled=true;res.innerHTML="";found=[];stage="in";const url=m.querySelector("#liU").value.trim(),txt=m.querySelector("#liT").value.trim();setCfg({proxyTpl:m.querySelector("#liP").value.trim()});
     try{let data=txt,ct="",fin=url;
@@ -1410,17 +1417,24 @@ function openLinkImport(mode){const tv=mode==="tv";let found=[],page="",busy=fal
       const ref=m.querySelector("#liR").value.trim();
       if(ref&&/^https?:\/\//i.test(ref)&&r.items.length===1){st.textContent="Lecture de la page du film…";try{const g=await MGP.fetchText(ref),x=MGP.extract(g.data,{url:g.finalUrl||ref,contentType:g.ct});r.items[0].auto=true;r.items[0].title="";const pick=x.items.length===1?x.items:null;if(pick&&pick[0].title&&!pick[0].auto){r.items[0].title=pick[0].title;r.items[0].auto=false}if(x.meta)MGP.applyMeta(r.items,x.meta);if(r.items[0].auto&&!r.items[0].title)r.items[0].title=MGP.titleFromUrl(r.items[0].url);page=g.finalUrl||ref}catch(e2){toast("Page du film inaccessible : "+(e2.message||"").slice(0,80))}}
       const ic=new Map();r.items.forEach(x=>{if(x.image)ic.set(x.image,(ic.get(x.image)||0)+1)});r.items.forEach(x=>{if(x.image&&ic.get(x.image)>1&&r.items.length>1){x.alts=(x.alts||[]).filter(u=>u!==x.image);x.image=""}});   // même image pour tous : ce n'est pas une jaquette
-      found=r.items;if(!ref)page=fin;
+      found=r.items;if(!ref)page=fin;lastCand=r.cand&&(r.cand.titles.length||r.cand.images.length)?r.cand:null;lastDiag=MGP.diag(r,{url:fin,ct,via:ct===""&&!url?"":undefined});m.querySelector("[data-diag]").style.display="";
       if(!found.length){st.innerHTML=`<b>${esc(r.note||"Rien trouvé.")}</b><br><small>Les pages construites par JavaScript ne montrent pas leurs vidéos dans leur code : essayez un lien direct vers la liste ou le fichier .m3u8, ou collez le code source affiché par le navigateur après chargement.</small>`}
       else{st.textContent=(r.kind==="list"?"Liste M3U : ":r.kind==="json"?"Données JSON : ":r.kind==="hls"?"Flux unique : ":"Page web : ")+plural(found.length,tv?"chaîne":"vidéo",tv?"chaînes":"vidéos")+". Vérifiez les titres, décochez ce que vous ne voulez pas.";show()}
-    }catch(e){err(e)}finally{busy=false;go.disabled=stage==="res"&&!sel().length}};
+    }catch(e){err(e);lastDiag="MG Divertissement · diagnostic d'extraction\nPage : "+url+"\nÉchec : "+(e.message||"")+"\n"+(e.reasons||[]).join("\n");m.querySelector("[data-diag]").style.display=""}finally{busy=false;go.disabled=stage==="res"&&!sel().length}};
   go.onclick=async()=>{if(stage==="in")return analyze();const s=sel();if(!s.length||busy)return;busy=true;go.disabled=true;
     try{if(tv){const x=importTv(s);closeModal();toast(plural(x.n,"chaîne ajoutée","chaînes ajoutées")+(x.d?" · "+plural(x.d,"déjà présente","déjà présentes"):""));renderLib()}
       else{const wi=m.querySelector("#liImg").checked,x=await addStreams(s,page,wi,st);closeModal();toast(plural(x.n,"vidéo ajoutée","vidéos ajoutées")+(x.img?" · "+plural(x.img,"jaquette","jaquettes"):"")+(x.dup?" · "+plural(x.dup,"déjà présente","déjà présentes"):""));renderLib();
         const nj=wi?x.added.filter(([,y])=>!y.cover):[];if(nj.length)fillStreamCovers(nj).then(n=>{if(n){toast(plural(n,"jaquette créée à partir de la vidéo","jaquettes créées à partir des vidéos"));if(cat==="films")renderLib()}})}
     }catch(e){err(e);busy=false;go.disabled=false}};
   m.addEventListener("change",e=>{if(e.target.id==="liAll"){m.querySelectorAll("[data-k]").forEach(c=>c.checked=e.target.checked);cnt()}else if(e.target.matches("[data-k]"))cnt()});
-  const prev=m.parentElement.onclick;m.parentElement.onclick=e=>{prev(e);if(e.target.closest("[data-file]")){const fi=document.createElement("input");fi.type="file";fi.accept=".m3u,.m3u8,.html,.htm,.json,.txt,text/*,application/json";fi.onchange=async()=>{const f=fi.files[0];if(f){m.querySelector("#liT").value=await f.text();m.querySelector("#liU").value=m.querySelector("#liU").value||"";analyze()}};fi.click()}};
+  const openPick=i=>{const box=m.querySelector('[data-pk="'+i+'"]');if(!box)return;if(!box.hidden){box.hidden=true;return}const c=lastCand;if(!c)return;
+    box.innerHTML=`<p class="msub">Titre : touchez celui qui convient</p><div class="pkc">${c.titles.slice(0,12).map((t,k)=>`<button class="${t.weak?"dim":""}" data-ti="${i}:${k}">${esc(t.t)}<small>${esc(t.src)}${t.weak?" · écarté":""}</small></button>`).join("")||'<span class="mempty">Aucun titre dans la page.</span>'}</div><p class="msub" style="margin-top:8px">Jaquette : touchez celle qui convient</p><div class="pki">${c.images.slice(0,12).map((u,k)=>`<button class="${u.generic?"dim":""}" data-im="${i}:${k}"><img src="${esc(u.u)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('bad')"><small>${esc(u.src)}${u.generic?" · générique":""}</small></button>`).join("")||'<span class="mempty">Aucune image dans la page.</span>'}</div>`;box.hidden=false};
+  const prev=m.parentElement.onclick;m.parentElement.onclick=async e=>{prev(e);
+    const pk=e.target.closest("[data-pick]");if(pk)return openPick(+pk.dataset.pick);
+    const ti=e.target.closest("[data-ti]");if(ti){const[i,k]=ti.dataset.ti.split(":").map(Number),t=lastCand.titles[k];found[i].title=t.t;found[i].auto=false;m.querySelector('[data-t="'+i+'"]').value=t.t;const b=m.querySelector('[data-k="'+i+'"]').parentElement.querySelector(".lit small b");if(b)b.remove();ti.parentElement.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===ti));return}
+    const im=e.target.closest("[data-im]");if(im){const[i,k]=im.dataset.im.split(":").map(Number),u=lastCand.images[k];found[i].image=u.u;found[i].alts=[];found[i].forced=true;found[i].pre=null;const box=m.querySelector('[data-k="'+i+'"]').parentElement.querySelector(".lith");if(box)box.innerHTML=`<img src="${esc(u.u)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`;im.parentElement.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===im));return}
+    if(e.target.closest("[data-diag]")){try{await navigator.clipboard.writeText(lastDiag);toast("Diagnostic copié : collez-le dans votre message")}catch{m.querySelector("details.liadv").open=true;m.querySelector("#liT").value=lastDiag;toast("Copie impossible : le texte est dans le champ, sélectionnez-le et copiez-le")}return}
+    if(e.target.closest("[data-file]")){const fi=document.createElement("input");fi.type="file";fi.accept=".m3u,.m3u8,.html,.htm,.json,.txt,text/*,application/json";fi.onchange=async()=>{const f=fi.files[0];if(f){m.querySelector("#liT").value=await f.text();m.querySelector("#liU").value=m.querySelector("#liU").value||"";analyze()}};fi.click()}};
   setTimeout(()=>{const u=m.querySelector("#liU");if(u&&!u.value)u.focus()},60)})}
 $("#qBtn").innerHTML=ICON.gear;$("#chList").innerHTML=ICON.chlist;$("#chPrev").innerHTML=ICON.chprev;$("#chNext").innerHTML=ICON.chnext;
 
@@ -1909,7 +1923,7 @@ new MutationObserver(ms=>{for(const m of ms){const t=m.type==="characterData"?m.
 mqScan(document);window.MQ_READY=true;
 
 /* ---------- Réglages ---------- */
-const APP_VER="4.0",APP_BUILD=38;
+const APP_VER="4.0",APP_BUILD=39;
 /* ---------- Mise à jour de l'application ---------- */
 let UPD_T=0,updating=false;
 function showUpdateBar(remote){if($("#updbar"))return;const b=document.createElement("div");b.id="updbar";b.className="updbar";

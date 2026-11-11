@@ -243,9 +243,25 @@
     const meta = { title: titles[0] || "", titles, image: imgs[0] || "", images: imgs, site };
     const uniq = new Set(items.map(i => i.url));
     if (uniq.size === 1) MGP.applyMeta(items, meta);
+    /* 3 bis) tout ce que la page contient comme titres et images possibles, avec leur provenance : pour le choix manuel et le diagnostic */
+    const cand = { titles: [], images: [] };
+    const cT = (t, src) => { t = clean(t); if (t && t.length < 160 && !isM3u8(t) && !cand.titles.some(x => x.t === t)) cand.titles.push({ t, src, weak: weakTitle(t) }); };
+    const cI = (u, src) => { u = u && !/^data:/i.test(u) ? absUrl(u, base) : ""; if (isHttp(u) && !cand.images.some(x => x.u === u)) cand.images.push({ u, src, generic: genericImg(u) }); };
+    for (const [n, src] of [['meta[property="og:title"]', "og:title"], ['meta[name="twitter:title"]', "twitter:title"], ['meta[name="title"]', "meta title"], ['meta[itemprop="name"]', "itemprop"]]) { const v = mc(n); if (v) { const c2 = pageTitle(v, site, host); if (c2 && c2 !== clean(v)) cT(c2, src + " (nettoyé)"); cT(v, src); } }
+    if (doc.title) { const c2 = pageTitle(doc.title, site, host); if (c2 && c2 !== clean(doc.title)) cT(c2, "<title> (nettoyé)"); cT(doc.title, "<title>"); }
+    [...doc.querySelectorAll("h1,h2")].slice(0, 5).forEach(h => cT(h.textContent, h.tagName.toLowerCase()));
+    titles.forEach(t => cT(t, "page"));
+    for (const it of items) { if (it.title) cT(it.title, "près de la vidéo"); }
+    for (const [n, src] of [['meta[property="og:image"]', "og:image"], ['meta[property="og:image:url"]', "og:image"], ['meta[name="twitter:image"]', "twitter:image"], ['link[rel="image_src"]', "image_src"]]) cI(mc(n), src);
+    for (const v of doc.querySelectorAll("video[poster]")) cI(v.getAttribute("poster"), "poster de la vidéo");
+    for (const it of items) { if (it.image) cI(it.image, "près de la vidéo"); (it.alts || []).forEach(a => cI(a, "page")); }
+    let nimg = 0; for (const im of doc.querySelectorAll("img")) { if (nimg >= 10) break; const w = +(im.getAttribute("width") || 999), hh = +(im.getAttribute("height") || 999); if (w < 60 || hh < 60) continue; const u = imgOfEl(im) || im.getAttribute("src"); if (u) { cI(u, "image de la page"); nimg++; } }
+    for (const sc of doc.querySelectorAll("script")) { const t = sc.textContent || ""; if (!/m3u8/i.test(t)) continue;
+      for (const m of t.matchAll(/["']?(title|name|titre|label)["']?\s*[:=]\s*["']([^"']{2,140})["']/gi)) { const v = unesc(m[2]); if (!looksUrl(v)) cT(v, "script (" + m[1] + ")"); }
+      for (const m of t.matchAll(/["']?(poster|image|thumbnail|thumb|cover|preview|jaquette|artwork|img)["']?\s*[:=]\s*["']([^"'\s]+)["']/gi)) { const v = unesc(m[2]); if (looksUrl(v)) cI(v, "script (" + m[1] + ")"); } }
     /* 4) pages liées (iframe / lecteur intégré) : renvoyées à l'appelant pour une analyse en un niveau */
     const frames = [...doc.querySelectorAll("iframe[src],iframe[data-src]")].map(f => absUrl(f.getAttribute("src") || f.getAttribute("data-src"), base)).filter(isHttp);
-    return { items, frames: [...new Set(frames)].slice(0, 4), pageTitle: clean(doc.title || ""), meta };
+    return { items, frames: [...new Set(frames)].slice(0, 4), pageTitle: clean(doc.title || ""), meta, cand };
   }
 
   function finalize(items, pageUrl) {
@@ -275,10 +291,11 @@
     if (/json/.test(ct) || /^[\[{]/.test(t)) { try { const items = finalize(fromJson(JSON.parse(t), url), url); return { kind: "json", items, frames: [], note: items.length ? "" : "Aucun lien m3u8 dans ces données." }; } catch { /* continue : texte */ } }
     let items = [], frames = [], pageTitle = "";
     const d = (typeof DOMParser !== "undefined") ? fromDom(t, url) : null;
-    let meta = null; if (d) { items = d.items; frames = d.frames; pageTitle = d.pageTitle; meta = d.meta; } else items = scanText(t, url);
+    let meta = null, cand = null; if (d) { items = d.items; frames = d.frames; pageTitle = d.pageTitle; meta = d.meta; cand = d.cand; } else items = scanText(t, url);
     items = finalize(items, url);
     const note = items.length ? "" : "Aucun lien .m3u8 dans le code de cette page.";
-    return { kind: "html", items, frames, pageTitle, note, meta };
+    const mi = t.search(/m3u8/i), snip = mi < 0 ? "" : t.slice(Math.max(0, mi - 350), mi + 250).replace(/\s+/g, " ");
+    return { kind: "html", items, frames, pageTitle, note, meta, cand, snip, size: t.length };
   }
   MGP.extract = extract;
   MGP.finalize = items => finalize(items, "");
@@ -289,6 +306,17 @@
     if (!i.image && imgs[0]) i.image = imgs[0];
     i.alts = [...new Set([...(i.alts || []), ...imgs.filter(x => x !== i.image)])];   // autres images candidates, essayées si la première est une image par défaut
     return items;
+  };
+  /* Texte à copier pour comprendre pourquoi un titre ou une jaquette n'a pas été trouvé (les valeurs de paramètres longs, souvent des jetons, sont abrégées). */
+  const redact = x => String(x || "").replace(/([?&;][A-Za-z0-9_%-]{1,24}=)[^&"'\s)\]]{14,}/g, "$1…");
+  MGP.diag = (r, o) => {
+    o = o || {}; const L = ["MG Divertissement · diagnostic d'extraction", "Page : " + redact(o.url || "(texte collé)") + (o.via ? "  [accès : " + o.via + "]" : "") + (o.ct ? "  [" + o.ct.split(";")[0] + "]" : "") + (r.size ? "  [" + r.size + " caractères]" : ""), "Type reconnu : " + r.kind + " · vidéos m3u8 : " + (r.items || []).length];
+    (r.items || []).forEach((i, k) => L.push((k + 1) + ". " + redact(i.url) + "\n   titre : " + (i.title || "—") + (i.auto ? " (déduit de l'adresse)" : "") + "\n   image : " + redact(i.image || "—")));
+    const c = r.cand; if (c) { L.push("Titres candidats :"); c.titles.slice(0, 14).forEach(x => L.push(" - [" + x.src + "]" + (x.weak ? " (écarté)" : "") + " " + x.t)); L.push("Images candidates :"); c.images.slice(0, 14).forEach(x => L.push(" - [" + x.src + "]" + (x.generic ? " (générique)" : "") + " " + redact(x.u))); }
+    if (r.frames && r.frames.length) L.push("Pages liées (iframe) : " + r.frames.map(redact).join(" ; "));
+    if (r.snip) L.push("Autour du premier lien m3u8 :\n" + redact(r.snip));
+    if (r.note) L.push("Note : " + r.note);
+    return L.join("\n");
   };
   MGP.weakTitle = weakTitle; MGP.genericImg = genericImg; MGP.pageTitle = pageTitle;
 
