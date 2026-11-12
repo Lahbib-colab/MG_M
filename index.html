@@ -783,6 +783,10 @@ html[data-eco] .overlay .vspin,html[data-motion="reduce"] .overlay .vspin{animat
 }
 @media (max-width:700px){#ovV.inl .vhud{left:2.4vw;right:2.4vw}}
 
+.tvpl{display:flex;align-items:center;gap:8px;margin:10px 10px 0;padding:10px 14px;border-radius:14px;border:1px solid var(--line);background:var(--chip);color:var(--txt);font-size:15px;text-align:left;flex:none}.tvpl span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tvpl small{color:var(--mut)}.tvpl .ico{font-size:20px;color:var(--acc2)}
+.cpr{display:flex;gap:10px;align-items:center;padding:10px 4px;border-top:1px solid var(--line)}.cpr .cpn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}.cpr small{color:var(--mut)}.cpr input{width:22px;height:22px;accent-color:var(--acc);flex:none}.lires.cpl{max-height:44vh}
+.mrow .x{flex:none}
+
 /* ---------- Portrait ---------- */
 @media (orientation:portrait){
   .tiles{grid-template-columns:repeat(3,1fr);height:auto;grid-auto-rows:22vh}
@@ -878,7 +882,7 @@ html[data-eco] .overlay .vspin,html[data-motion="reduce"] .overlay .vspin{animat
 
 <!-- Écrans -->
 <section class="view" id="v-lib"><div class="vh"><button class="ib btn ghost" data-back><svg class="ico" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg><span class="bt"> Accueil</span></button><h2 id="libTitle"></h2><span id="libExtra"></span><button class="btn" id="libAdd">+ Ajouter</button></div><div class="vb" id="libBody"></div>
-<div class="tvsplit" id="tvSplit"><aside class="tvside" id="tvSide"><div class="tvsh"><input class="ptxt tvq" id="tvQ" type="search" placeholder="Rechercher une chaîne…" autocomplete="off"><button class="x" id="tvCol" aria-label="Replier la liste des chaînes"></button></div><div class="tvg" id="tvGroups"></div><div id="tvList"></div></aside><div class="tvscrim" id="tvScrim"></div><section class="tvmain" id="tvMain"><button class="tvtog" id="tvTog2" aria-label="Afficher la liste des chaînes"></button><div id="tvEmpty"></div></section></div>
+<div class="tvsplit" id="tvSplit"><aside class="tvside" id="tvSide"><button class="tvpl" id="tvPl" aria-label="Playlists"></button><div class="tvsh"><input class="ptxt tvq" id="tvQ" type="search" placeholder="Rechercher une chaîne…" autocomplete="off"><button class="x" id="tvCol" aria-label="Replier la liste des chaînes"></button></div><div class="tvg" id="tvGroups"></div><div id="tvList"></div></aside><div class="tvscrim" id="tvScrim"></div><section class="tvmain" id="tvMain"><button class="tvtog" id="tvTog2" aria-label="Afficher la liste des chaînes"></button><div id="tvEmpty"></div></section></div>
 </section>
 <section class="view" id="v-games"><div class="vh"><button class="ib btn ghost" data-back><svg class="ico" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg><span class="bt"> Accueil</span></button><h2 id="gTitle">Jeux</h2><span id="gExtra"></span></div><div class="vb" id="gBody"></div></section>
 <section class="view" id="v-apps"><div class="vh"><button class="ib btn ghost" data-back><svg class="ico" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg><span class="bt"> Accueil</span></button><h2>Applications</h2><button class="btn ghost" id="appsEdit">Modifier</button><button class="btn" id="appsAdd"><svg class="ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span class="bt"> Ajouter</span></button></div><div class="vb" id="appsBody"></div></section>
@@ -1059,7 +1063,7 @@ let RL_TOK=0;
 async function renderLib(){
   if(!cat||!META[cat])return;const tok=++RL_TOK;
   const m=META[cat],body=$("#libBody");body.classList.remove("hascf");$("#libTitle").textContent=m.t;$("#v-lib").dataset.cat=cat;clean();
-  $("#libAdd").innerHTML=ICON.plus+'<span class="bt">'+(cat==="tv"?" Chaîne":" Ajouter")+"</span>";
+  $("#libAdd").innerHTML=ICON.plus+'<span class="bt"> Ajouter</span>';
   if(cat==="tv"){renderTv(m,body);return}tvLeave();
   items=await dbAll(cat);if(tok!==RL_TOK)return;items.sort((a,b)=>a.name.localeCompare(b.name,"fr",{numeric:true}));items=items.filter(vis);$("#libAdd").style.display=isKids()?"none":"";
   if(!items.length){$("#libExtra").innerHTML="";body.innerHTML=`<div class="empty"><div><b>${m.t}</b>${emptyMsg(m)}</div></div>`;return}
@@ -1286,7 +1290,7 @@ ICON.chprev='<svg class="ico" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></sv
 ICON.chnext='<svg class="ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>';
 MGP.net.proxy=()=>window.MGSYNC_PROXY?window.MGSYNC_PROXY():null;MGP.net.tpl=()=>cfg("proxyTpl")||"";
 var P=new MGP.Player(vid,{onstate:(s,x)=>vState(s,x),onlive:()=>vHudSet(),onlevels:()=>{},onnote:t=>toast(t)});
-var TV={q:"",g:"",lim:300,cur:"",view:[]},vTick=null,vIdle=null,vCtx={};
+var TV={q:"",g:"",pl:"",lim:300,cur:"",view:[]},vTick=null,vIdle=null,vCtx={};
 const rid=()=>Math.random().toString(36).slice(2,10);
 const hostOf=u=>MGP.hostOf(u);
 
@@ -1299,7 +1303,7 @@ function vState(s,x){const sp=$("#vSpin"),m=$("#vMsg"),ov=$("#ovV");
   if(s==="paused"||s==="ended")ov.classList.remove("idle");
   if(s==="reconnecting"){m.className="msg";m.dataset.k="rc";m.textContent="Connexion perdue : nouvelle tentative ("+x.n+"/"+x.of+")…";m.style.display="block"}
   if(s==="error"){sp.classList.remove("on");m.className="msg big";m.dataset.k="err";
-    m.innerHTML=`<b>${esc(x.title||"Lecture impossible")}</b><span>${esc(x.detail||"")}</span><div class="mact">${x.noRetry?"":'<button class="btn" data-vr>Réessayer</button>'}${vCtx.o&&vCtx.o.tv?'<button class="btn ghost" data-vn>Chaîne suivante</button>':""}<button class="btn ghost" data-vo>Détails</button></div>`;m.style.display="block"}
+    m.innerHTML=`<b>${esc(x.title||"Lecture impossible")}</b><span>${esc(x.detail||"")}</span>${MGP.mixed(P.url)?"<span>Ce flux est en http:// alors que l\u2019application est en https:// : le navigateur le bloque. Demandez à votre fournisseur une adresse https://, ou ouvrez l\u2019application en http (serveur Termux en mode simple).</span>":""}<div class="mact">${x.noRetry?"":'<button class="btn" data-vr>Réessayer</button>'}${vCtx.o&&vCtx.o.tv?'<button class="btn ghost" data-vn>Chaîne suivante</button>':""}<button class="btn ghost" data-vo>Détails</button></div>`;m.style.display="block"}
   vHudSet()}
 $("#vMsg").addEventListener("click",e=>{if(e.target.closest("[data-vr]")){$("#vMsg").style.display="none";P.retry()}else if(e.target.closest("[data-vn]"))tvZap(1);else if(e.target.closest("[data-vo]"))openVOpts()});
 function hudPoke(){const ov=$("#ovV");ov.classList.remove("idle");clearTimeout(vIdle);if(!ov.classList.contains("auto"))return;vIdle=setTimeout(()=>{if(!vid.paused&&ov.classList.contains("on")&&!$("#mdl").classList.contains("on")&&$("#vMsg").style.display!=="block")ov.classList.add("idle")},4200)}
@@ -1329,7 +1333,7 @@ function openVOpts(){const lv=P.levels,inf=P.info(),row=(k,t,s,on)=>`<div class=
 
 /* --- chaînes TV --- */
 const tvAll=()=>{const a=LS.get("mg.tv",[]);let ch=false;a.forEach(c=>{if(!c.id){c.id=rid();ch=true}});if(ch)LS.set("mg.tv",a);return a};
-const tvSave=a=>{try{localStorage.setItem("mg.tv",JSON.stringify(a))}catch{toast("Espace de stockage plein : liste non enregistrée")}};
+const tvSave=a=>{try{localStorage.setItem("mg.tv",JSON.stringify(a));return true}catch{toast("Espace de stockage plein : liste non enregistrée");return false}};
 function tvPlay(c,list){TV.cur=c.id;if(list)TV.view=list;c.ts=Date.now();const a=tvAll(),x=a.find(y=>y.id===c.id);if(x){x.ts=c.ts;tvSave(a)}LS.set("mg.tv.last",c.id);tvChips();
   vCtx={o:{tv:true,inline:true,title:c.name,sub:c.group||hostOf(c.url)}};playVideo(c.url,true,null,vCtx.o);$$("#tvList .item[data-id]").forEach(e=>e.classList.toggle("cur",e.dataset.id===c.id));if(narrowTv())tvSide(false)}
 function tvZap(d){const l=TV.view&&TV.view.length?TV.view:tvAll();if(!l.length)return;let i=l.findIndex(c=>c.id===TV.cur);i=(i+d+l.length)%l.length;haptic("sel");tvPlay(l[i],l)}
@@ -1338,15 +1342,15 @@ function openChPick(){const all=tvAll();let q="";const rows=()=>{const l=all.fil
     m.querySelector("#cpQ").oninput=e=>{q=e.target.value.trim().toLowerCase();m.querySelector("#cpL").innerHTML=rows()};
     const prev=m.parentElement.onclick;m.parentElement.onclick=e=>{prev(e);const r=e.target.closest("[data-c]");if(r){const c=all.find(x=>x.id===r.dataset.c);closeModal();if(c)tvPlay(c,TV.view&&TV.view.length?TV.view:all)}}})}
 const tvRow=c=>`<div class="item tvi ${TV.cur===c.id?"cur":""}" data-id="${c.id}"><span class="tvl">${c.logo?`<img src="${esc(c.logo)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">`:""}<i>${ICON.tv}</i></span><div class="nm"><span class="mq">${esc(c.name)}</span><span class="sub mq">${esc(c.group||hostOf(c.url))}</span></div><button class="x fav ${c.fav?"on":""}" data-f aria-label="Favori">${c.fav?ICON.starOn:ICON.star}</button><button class="x" data-e aria-label="Modifier">${ICON.dots}</button></div>`;
-function tvFilter(all){const q=TV.q.trim().toLowerCase();let l=all.filter(c=>(!TV.g||(TV.g==="★"?c.fav:TV.g==="⏱"?c.ts:c.group===TV.g))&&(!q||(c.name+" "+(c.group||"")).toLowerCase().includes(q)));if(TV.g==="⏱")l=l.sort((a,b)=>b.ts-a.ts).slice(0,12);return l}
+function tvFilter(all){const q=TV.q.trim().toLowerCase();let l=all.filter(c=>(!TV.pl||(c.pl||"_")===TV.pl)&&(!TV.g||(TV.g==="★"?c.fav:TV.g==="⏱"?c.ts:c.group===TV.g))&&(!q||(c.name+" "+(c.group||"")).toLowerCase().includes(q)));if(TV.g==="⏱")l=l.sort((a,b)=>b.ts-a.ts).slice(0,12);return l}
 /* Puces de filtre : Toutes, Favoris, Récentes et un groupe par catégorie. Reconstruites quand les favoris ou les groupes changent. */
 function tvChips(){const box=$("#tvGroups");if(!box)return;const all=tvAll(),groups=[...new Set(all.map(c=>c.group).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"fr"));
   if(TV.g==="★"&&!all.some(c=>c.fav)||TV.g==="⏱"&&!all.some(c=>c.ts)||TV.g&&TV.g!=="★"&&TV.g!=="⏱"&&!groups.includes(TV.g))TV.g="";
   const chip=(k,t)=>`<button class="${TV.g===k?"on":""}" data-g="${esc(k)}">${esc(t)}</button>`;
   box.innerHTML=chip("","Toutes")+(all.some(c=>c.fav)?chip("★","★ Favoris"):"")+(all.some(c=>c.ts)?chip("⏱","Récentes"):"")+groups.map(g=>chip(g,g)).join("")}
 function tvListRefresh(){const all=tvAll(),l=tvFilter(all),box=$("#tvList");if(!box)return;TV.view=l;
-  box.innerHTML=l.length?`<div class="list">${l.slice(0,TV.lim).map(tvRow).join("")}</div>${l.length>TV.lim?`<button class="btn ghost tvmore" data-more>Afficher plus (${l.length-TV.lim})</button>`:""}`:`<p class="mempty" style="padding:26px 14px;text-align:center">${all.length?(TV.g==="★"?"Touchez l\u2019étoile d\u2019une chaîne pour la retrouver ici.":"Aucun résultat."):"Aucune chaîne pour l\u2019instant."}</p>`;
-  $("#tvQ").placeholder="Rechercher parmi "+all.length+" chaîne"+(all.length>1?"s":"")+"…"}
+  box.innerHTML=l.length?`<div class="list">${l.slice(0,TV.lim).map(tvRow).join("")}</div>${l.length>TV.lim?`<button class="btn ghost tvmore" data-more>Afficher plus (${l.length-TV.lim})</button>`:""}`:`<p class="mempty" style="padding:26px 14px;text-align:center">${all.length?(TV.g==="★"?"Touchez l\u2019étoile d\u2019une chaîne pour la retrouver ici.":"Aucun résultat."):'Aucune chaîne pour l\u2019instant.</p><button class="btn" data-addpl style="margin:0 auto;display:flex">'+ICON.plus+" Ajouter une playlist</button><p>"}</p>`;
+  $("#tvQ").placeholder="Rechercher parmi "+l.length+" chaîne"+(l.length>1?"s":"")+"…";tvPlLabel()}
 /* Onglet Chaînes TV : liste à gauche (repliable, comme dans IPTVX), lecteur à droite. Le lecteur #ovV est déplacé dans #tvMain tant que l'onglet est ouvert. */
 var OV_HOME=$("#ovV").parentElement,narrowTv=()=>matchMedia("(max-width:899px)").matches;
 function tvMount(){const ov=$("#ovV"),mn=$("#tvMain");if(ov.parentElement!==mn)mn.appendChild(ov)}
@@ -1355,13 +1359,13 @@ function tvLeave(){if(!OV_HOME)return;const ov=$("#ovV");if(ov.parentElement&&ov
 function tvSide(show){const sp=$("#tvSplit");if(narrowTv())sp.classList.toggle("open",show===undefined?!sp.classList.contains("open"):show);else{const c=show===undefined?!sp.classList.contains("col"):!show;sp.classList.toggle("col",c);LS.set("mg.tv.col",c)}}
 function tvStop(){if(P)P.destroy();if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});$("#ovV").classList.remove("on","idle");$("#vSpin").classList.remove("on");$("#vMsg").style.display="none";TV.cur="";$$("#tvList .item.cur").forEach(e=>e.classList.remove("cur"));tvEmpty();if(narrowTv())tvSide(true)}
 function tvEmpty(){const a=tvAll(),last=a.find(c=>c.id===LS.get("mg.tv.last",""));
-  $("#tvEmpty").innerHTML=a.length?`<div><b>Chaînes TV</b><p>Choisissez une chaîne dans la liste${narrowTv()?" (bouton ☰)":""}.</p>${last?`<button class="btn" data-resume>▶ Reprendre « ${esc(last.name)} »</button>`:""}</div>`:`<div><b>Aucune chaîne</b><p>Ajoutez une chaîne ou importez une liste M3U (fichier ou lien).</p><div class="mact" style="justify-content:center"><button class="btn" data-add>${ICON.plus} Ajouter</button><button class="btn ghost" data-lnk>${ICON.link} Importer depuis un lien</button></div></div>`}
+  $("#tvEmpty").innerHTML=a.length?`<div><b>Chaînes TV</b><p>Choisissez une chaîne dans la liste${narrowTv()?" (bouton ☰)":""}.</p>${last?`<button class="btn" data-resume>▶ Reprendre « ${esc(last.name)} »</button>`:""}</div>`:`<div><b>Aucune chaîne</b><p>Ajoutez une playlist M3U / M3U8, ou connectez-vous avec Xtream Codes.</p><div class="mact" style="justify-content:center"><button class="btn" data-add>${ICON.plus} Ajouter une playlist</button></div></div>`}
 function renderTv(m,body){const sp=$("#tvSplit");$("#libExtra").innerHTML="";$("#libAdd").style.display=isKids()?"none":"";body.style.display="none";sp.classList.add("on");tvMount();
   sp.classList.toggle("col",!narrowTv()&&!!LS.get("mg.tv.col",false));$("#tvQ").value=TV.q;tvChips();tvListRefresh();tvEmpty();
-  if(narrowTv()&&!$("#ovV").classList.contains("on"))sp.classList.add("open")}
+  if(narrowTv()&&tvAll().length&&!$("#ovV").classList.contains("on"))sp.classList.add("open")}
 $("#tvQ").oninput=e=>{TV.q=e.target.value;TV.lim=300;tvListRefresh()};
 $("#tvGroups").onclick=e=>{const b=e.target.closest("[data-g]");if(!b)return;TV.g=b.dataset.g;TV.lim=300;$$("#tvGroups button").forEach(x=>x.classList.toggle("on",x===b));tvListRefresh()};
-$("#tvList").onclick=e=>{if(e.target.closest("[data-more]")){TV.lim+=300;tvListRefresh();return}
+$("#tvList").onclick=e=>{if(e.target.closest("[data-addpl]")){openTvAdd();return}if(e.target.closest("[data-more]")){TV.lim+=300;tvListRefresh();return}
   const row=e.target.closest(".item[data-id]");if(!row)return;const a=tvAll(),c=a.find(x=>x.id===row.dataset.id);if(!c)return;
   if(e.target.closest("[data-f]")){c.fav=!c.fav;tvSave(a);const b=e.target.closest("[data-f]");b.classList.toggle("on",c.fav);b.innerHTML=c.fav?ICON.starOn:ICON.star;haptic("sel");tvChips();if(TV.g==="★")tvListRefresh();return}
   if(e.target.closest("[data-e]")){tvEdit(c);return}
@@ -1380,12 +1384,79 @@ function importTv(items){const all=tvAll(),seen=new Set(all.map(c=>c.url));let n
   for(const x of items){if(!x.url||seen.has(x.url)){d++;continue}seen.add(x.url);all.push({id:rid(),name:x.title||MGP.titleFromUrl(x.url),url:x.url,logo:x.image||"",group:x.group||""});n++}
   if(all.length>8000){all.length=8000;toast("Liste très longue : 8 000 chaînes conservées")}tvSave(all);return{n,d}}
 const plural=(n,a,b)=>n+" "+(n>1?b:a);
-function openTvAdd(){modal(`<h3>Ajouter une chaîne</h3><div class="apx"><input class="ptxt" id="tvN" placeholder="Nom de la chaîne"><input class="ptxt" id="tvU" type="url" inputmode="url" autocapitalize="off" placeholder="Adresse du flux (https://… .m3u8 ou .mp4)"></div><div class="mact"><button class="btn" data-ok>Ajouter</button><button class="btn ghost" data-link>${ICON.link} Importer depuis un lien</button><button class="btn ghost" data-m3u>Importer un fichier M3U</button><button class="btn ghost" data-close>Annuler</button></div>`,m=>{const prev=m.parentElement.onclick;
-  m.parentElement.onclick=e=>{prev(e);if(e.target.closest("[data-m3u]")){closeModal();$("#m3uIn").click()}
-    if(e.target.closest("[data-link]")){closeModal();openLinkImport("tv")}
-    if(e.target.closest("[data-ok]")){const n=$("#tvN").value.trim(),u=$("#tvU").value.trim();if(!n||!/^https?:/i.test(u))return toast("Indiquez un nom et une adresse http(s)");importTv([{title:n,url:u}]);closeModal();renderLib()}}})}
-$("#m3uIn").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;const r=MGP.extract(await f.text(),{url:"",title:f.name.replace(/\.[^.]+$/,"")});
-  if(!r.items.length)return toast("Aucune chaîne trouvée dans ce fichier");const x=importTv(r.items);toast(plural(x.n,"chaîne importée","chaînes importées")+(x.d?" · "+plural(x.d,"déjà présente","déjà présentes"):""));renderLib()};
+/* --- playlists : M3U / M3U8 (lien ou fichier) et Xtream Codes --- */
+ICON.refresh='<svg class="ico" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.300 5.700M20 4v7h-7"/></svg>';
+ICON.trash='<svg class="ico" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
+const plAll=()=>LS.get("mg.tv.pl",[]);
+const plSave=a=>{try{localStorage.setItem("mg.tv.pl",JSON.stringify(a));return true}catch{toast("Espace de stockage plein");return false}};
+const ckey=c=>c.sid!=null&&c.sid!==""?"s"+c.sid:c.url;
+const ago=t=>{if(!t)return"jamais";const m=Math.round((Date.now()-t)/6e4);return m<1?"à l\u2019instant":m<60?"il y a "+m+" min":m<1440?"il y a "+Math.round(m/60)+" h":"il y a "+Math.round(m/1440)+" j"};
+const xtInfo=i=>i?(i.status||"Actif")+(i.exp?" · expire le "+new Date(i.exp).toLocaleDateString("fr-FR"):" · sans date d\u2019expiration")+(i.max?" · "+i.act+"/"+i.max+" connexion"+(i.max>1?"s":""):"")+(i.trial?" · essai":""):"";
+const viaTxt=v=>!v||v==="direct"?"":" · via "+(v==="serveur"?"le serveur MG":"le relais");
+function plName(id){if(!id||id==="_")return"Mes chaînes";const p=plAll().find(x=>x.id===id);return p?p.name:"Playlist"}
+function tvPlLabel(){const b=$("#tvPl");if(!b)return;const all=tvAll(),n=TV.pl?all.filter(c=>(c.pl||"_")===TV.pl).length:all.length;b.innerHTML=`${ICON.chlist}<span>${esc(TV.pl?plName(TV.pl):"Toutes les playlists")}</span><small>${n}</small>`}
+const catCounts=items=>{const m=new Map();items.forEach(x=>{const g=x.group||"Sans catégorie";m.set(g,(m.get(g)||0)+1)});return[...m].map(([name,count])=>({name,count})).sort((a,b)=>a.name.localeCompare(b.name,"fr",{numeric:true}))};
+/* Remplace les chaînes d'une playlist par la nouvelle liste en gardant favoris et historique (clé : identifiant de flux Xtream, sinon adresse). */
+function applyPlaylist(pl,items){const all=tvAll(),mine=all.filter(c=>c.pl===pl.id),old=new Map(mine.map(c=>[ckey(c),c])),keep=all.filter(c=>c.pl!==pl.id),seen=new Set(),next=[];let add=0;
+  for(const x of items){if(!x.url)continue;const k=ckey(x);if(seen.has(k))continue;seen.add(k);const o=old.get(k);
+    if(o){o.name=x.title||o.name;o.url=x.url;o.logo=x.image||"";o.group=x.group||"";next.push(o)}else{next.push({id:rid(),name:x.title||MGP.titleFromUrl(x.url),url:x.url,logo:x.image||"",group:x.group||"",pl:pl.id,...(x.sid!=null?{sid:x.sid}:{})});add++}}
+  const merged=keep.concat(next);if(merged.length>12000){toast("Trop de chaînes : 12 000 au maximum. Choisissez moins de catégories.");return null}
+  if(!tvSave(merged))return null;return{add,removed:mine.length-(next.length-add),total:next.length}}
+function finishPlaylist(pl,items){const r=applyPlaylist(pl,items);if(!r)return false;pl.count=r.total;const pls=plAll();pls.push(pl);plSave(pls);closeModal();TV.pl=pl.id;TV.g="";TV.q="";TV.lim=300;toast(plural(r.total,"chaîne ajoutée","chaînes ajoutées")+" dans « "+pl.name+" »");renderLib();return true}
+/* Choix des catégories (groupes) à importer, avec recherche : indispensable pour les très longues listes. */
+function openCatPick(o){const tot=o.cats.reduce((a,c)=>a+c.count,0),sel=new Set(o.pre||(tot<=3000?o.cats.map(c=>c.name):[]));let q="";
+  const rows=()=>o.cats.filter(c=>!q||c.name.toLowerCase().includes(q)).map(c=>`<label class="cpr"><input type="checkbox" data-cn="${esc(c.name)}" ${sel.has(c.name)?"checked":""}><span class="cpn">${esc(c.name)}</span><small>${c.count}</small></label>`).join("")||'<p class="mempty">Aucune catégorie.</p>';
+  const nb=()=>o.cats.filter(c=>sel.has(c.name)).reduce((a,c)=>a+c.count,0);
+  modal(`<h3>${esc(o.title)}</h3><p class="msub">${esc(o.sub||"")}</p>${tot>3000?`<p class="msub" style="color:#fbbf24">Liste très longue (${tot} chaînes) : cochez les catégories qui vous intéressent (le stockage de la tablette est limité).</p>`:""}<input class="ptxt" id="cpS" type="search" placeholder="Filtrer les catégories…" style="width:100%"><div class="lihead"><label><input type="checkbox" id="cpAll"> Tout sélectionner</label><span id="cpN"></span></div><div class="lires cpl" id="cpR"></div><div class="mact stick"><button class="btn" data-ok></button><button class="btn ghost" data-close>Annuler</button></div>`,m=>{
+    const R=m.querySelector("#cpR"),ok=m.querySelector("[data-ok]"),all=m.querySelector("#cpAll"),N=m.querySelector("#cpN");
+    const upd=()=>{const k=nb();ok.textContent=k?"Importer "+plural(k,"chaîne","chaînes"):"Rien de sélectionné";ok.disabled=!k;N.textContent=sel.size+" / "+o.cats.length+" catégories";all.checked=sel.size===o.cats.length};
+    const draw=()=>{R.innerHTML=rows();upd()};draw();
+    m.addEventListener("change",e=>{if(e.target.id==="cpAll"){sel.clear();if(e.target.checked)o.cats.forEach(c=>sel.add(c.name));draw()}else if(e.target.dataset.cn!==undefined){e.target.checked?sel.add(e.target.dataset.cn):sel.delete(e.target.dataset.cn);upd()}});
+    m.querySelector("#cpS").oninput=e=>{q=e.target.value.trim().toLowerCase();draw()};
+    const prev=m.parentElement.onclick;m.parentElement.onclick=async e=>{prev(e);if(e.target.closest("[data-ok]")&&!ok.disabled){ok.disabled=true;ok.textContent="Import…";try{await o.onOk([...sel])}catch(er){toast(er.message||"Échec")}ok.disabled=false;upd()}}})}
+async function xtreamFlow(c,name,st){const lg=await MGP.xtream.login(c);if(st)st.textContent="Compte vérifié · chargement des chaînes…";
+  const lv=await MGP.xtream.live(c);if(!lv.channels.length)throw new Error("Ce compte ne contient aucune chaîne en direct.");closeModal();
+  openCatPick({title:"Catégories à importer",sub:xtInfo(lg.info)+" · "+plural(lv.channels.length,"chaîne","chaînes")+viaTxt(lv.via),cats:catCounts(lv.channels),onOk:async names=>{
+    finishPlaylist({id:rid(),name:name||MGP.hostOf(c.server),type:"xtream",server:c.server,user:c.user,pass:c.pass,cats:names,info:lg.info,updated:Date.now()},lv.channels.filter(x=>names.includes(x.group||"Sans catégorie")))}})}
+async function m3uFlow(url,name,st){if(!/^https?:\/\//i.test(url))throw new Error("Indiquez une adresse commençant par http:// ou https://");
+  const xc=MGP.xtream.fromUrl(url);if(xc){try{st.textContent="Lien Xtream reconnu : connexion…";return await xtreamFlow(xc,name,st)}catch(e){if(/refusé|non actif/.test(e.message))throw e;st.textContent="L\u2019API Xtream ne répond pas : lecture de la liste M3U…"}}
+  st.textContent="Téléchargement de la playlist…";const r=await MGP.fetchText(url,{timeout:90000}),x=MGP.extract(r.data,{url:r.finalUrl||url,contentType:r.ct,title:name});
+  if(!x.items.length)throw new Error("Aucune chaîne trouvée dans cette playlist.");closeModal();
+  openCatPick({title:"Catégories à importer",sub:plural(x.items.length,"chaîne","chaînes")+viaTxt(r.via),cats:catCounts(x.items),onOk:async names=>{
+    finishPlaylist({id:rid(),name:name||MGP.titleFromUrl(url)||MGP.hostOf(url),type:"m3u",url,cats:names,updated:Date.now()},x.items.filter(i=>names.includes(i.group||"Sans catégorie")))}})}
+function openPlaylistAdd(kind){const xt=kind==="xtream";
+  modal(`<h3>${xt?"Connexion Xtream Codes":"Playlist M3U / M3U8"}</h3><p class="msub">${xt?"Les trois informations de votre abonnement IPTV. Vous pouvez aussi coller l\u2019adresse M3U complète du fournisseur (get.php?username=…) dans « Serveur ».":"Adresse d\u2019une playlist M3U ou M3U8 (liste de chaînes)."}</p><div class="apx"><input class="ptxt" id="plN" placeholder="Nom de la playlist (facultatif)" autocomplete="off">${xt?'<input class="ptxt" id="plS" type="url" inputmode="url" autocapitalize="off" placeholder="Serveur : http://hôte:port" autocomplete="off"><input class="ptxt" id="plU" autocapitalize="off" placeholder="Identifiant" autocomplete="username"><input class="ptxt" id="plP" type="password" placeholder="Mot de passe" autocomplete="current-password"><label class="liimg"><input type="checkbox" id="plSh"> Afficher le mot de passe</label>':'<input class="ptxt" id="plL" type="url" inputmode="url" autocapitalize="off" placeholder="https://…/liste.m3u8" autocomplete="off">'}</div><div class="msub" id="plSt" style="min-height:1.4em"></div><div class="mact stick"><button class="btn" data-go>${xt?"Se connecter":"Charger la playlist"}</button><button class="btn ghost" data-close>Annuler</button></div>`,m=>{
+    const st=m.querySelector("#plSt"),btn=m.querySelector("[data-go]");let busy=false;
+    const hint=r=>/CORS|connexion/.test(r.join(" "))?`<br><small>Le navigateur n\u2019a pas pu joindre ce serveur (blocage CORS, ou serveur en http:// alors que l\u2019application est en https://). ${window.MGSYNC_PROXY&&window.MGSYNC_PROXY()?"":"Appairez la tablette au serveur MG (Réglages > Synchronisation) : il relaie la requête."}</small>`:"";
+    const fail=e=>{const r=e.reasons||[];st.innerHTML=`<b style="color:#f87171">${esc(e.message||"Échec")}</b>`+(r.length?`<br><small>${esc(r.join(" · "))}</small>${hint(r)}`:"")};
+    const sh=m.querySelector("#plSh");if(sh)sh.onchange=()=>{m.querySelector("#plP").type=sh.checked?"text":"password"};
+    btn.onclick=async()=>{if(busy)return;busy=true;btn.disabled=true;st.textContent="Connexion…";
+      try{const nm=m.querySelector("#plN").value.trim();if(xt){let sv=m.querySelector("#plS").value.trim(),u=m.querySelector("#plU").value.trim(),pw=m.querySelector("#plP").value;const fu=MGP.xtream.fromUrl(sv);if(fu){sv=fu.server;u=u||fu.user;pw=pw||fu.pass}
+          const c={server:MGP.xtream.norm(sv),user:u,pass:pw};if(!c.server||!c.user||!c.pass)throw new Error("Indiquez le serveur, l\u2019identifiant et le mot de passe.");await xtreamFlow(c,nm,st)}else await m3uFlow(m.querySelector("#plL").value.trim(),nm,st)}
+      catch(e){fail(e)}finally{busy=false;btn.disabled=false}};
+    setTimeout(()=>{const f=m.querySelector(xt?"#plS":"#plL");if(f&&!m.contains(document.activeElement))f.focus()},60)})}
+async function refreshPlaylist(p){toast("Actualisation de « "+p.name+" »…");
+  try{let items;if(p.type==="xtream"){const c={server:p.server,user:p.user,pass:p.pass},lg=await MGP.xtream.login(c);p.info=lg.info;items=(await MGP.xtream.live(c)).channels}else{const r=await MGP.fetchText(p.url,{timeout:90000});items=MGP.extract(r.data,{url:r.finalUrl||p.url,contentType:r.ct}).items}
+    if(p.cats)items=items.filter(i=>p.cats.includes(i.group||"Sans catégorie"));
+    const r=applyPlaylist(p,items);if(!r)return;const pls=plAll(),q=pls.find(x=>x.id===p.id);if(q){q.updated=Date.now();q.count=r.total;if(p.info)q.info=p.info;plSave(pls)}
+    toast("« "+p.name+" » actualisée : "+plural(r.total,"chaîne","chaînes")+(r.add?" · +"+r.add:"")+(r.removed?" · −"+r.removed:""));tvChips();tvListRefresh()}catch(e){toast((e.message||"Échec de l\u2019actualisation").slice(0,140))}}
+function delPlaylist(p){const n=tvAll().filter(c=>c.pl===p.id).length;if(!confirm("Supprimer la playlist « "+p.name+" » et ses "+n+" chaîne"+(n>1?"s":"")+" ?"))return;tvSave(tvAll().filter(c=>c.pl!==p.id));plSave(plAll().filter(x=>x.id!==p.id));if(TV.pl===p.id)TV.pl="";if(TV.cur&&!tvAll().some(c=>c.id===TV.cur))tvStop();toast("Playlist supprimée");renderLib()}
+function openTvPlaylists(){const pls=plAll(),all=tvAll(),cnt=id=>all.filter(c=>(c.pl||"_")===id).length,legacy=cnt("_");
+  const row=(id,name,sub,acts)=>`<div class="mrow ${TV.pl===id?"on":""}" data-ps="${id}"><span class="mt"><b>${esc(name)}</b><small>${esc(sub)}</small></span>${acts||""}</div>`,act=(k,id,ic,l)=>`<button class="x" data-${k}="${id}" aria-label="${l}">${ic}</button>`;
+  modal(`<h3>Playlists</h3><div class="menu">${row("","Toutes les playlists",plural(all.length,"chaîne","chaînes"))}${legacy?row("_","Mes chaînes",plural(legacy,"chaîne","chaînes")+" · ajoutées une à une"):""}${pls.map(p=>row(p.id,p.name,(p.type==="xtream"?"Xtream":p.type==="file"?"Fichier":"M3U")+" · "+plural(cnt(p.id),"chaîne","chaînes")+" · "+ago(p.updated)+(p.type==="xtream"&&p.info?" · "+xtInfo(p.info):""),(p.type==="file"?"":act("pr",p.id,ICON.refresh,"Actualiser"))+act("pd",p.id,ICON.trash,"Supprimer"))).join("")}</div><div class="mact"><button class="btn" data-new>${ICON.plus} Ajouter une playlist</button><button class="btn ghost" data-close>Fermer</button></div>`,m=>{
+    const prev=m.parentElement.onclick;m.parentElement.onclick=e=>{prev(e);
+      const r=e.target.closest("[data-pr]");if(r){closeModal();return refreshPlaylist(pls.find(x=>x.id===r.dataset.pr))}
+      const d=e.target.closest("[data-pd]");if(d){closeModal();return delPlaylist(pls.find(x=>x.id===d.dataset.pd))}
+      if(e.target.closest("[data-new]")){closeModal();return openTvAdd()}
+      const s=e.target.closest("[data-ps]");if(s){TV.pl=s.dataset.ps;TV.g="";TV.lim=300;closeModal();tvChips();tvListRefresh()}}})}
+function openTvAdd(){modal(`<h3>Ajouter à Chaînes TV</h3><div class="menu"><div class="mrow" data-a="m3u"><span class="mi">${ICON.link}</span><span class="mt"><b>Playlist M3U / M3U8</b><small>Depuis un lien : liste de chaînes, logos et groupes</small></span></div><div class="mrow" data-a="xtream"><span class="mi">${ICON.tv}</span><span class="mt"><b>Xtream Codes</b><small>Se connecter avec serveur, identifiant et mot de passe</small></span></div><div class="mrow" data-a="file"><span class="mi">${ICON.plus}</span><span class="mt"><b>Fichier M3U de la tablette</b><small>.m3u ou .m3u8 enregistré sur l\u2019appareil</small></span></div><div class="mrow" data-a="one"><span class="mi">${ICON.play||ICON.tv}</span><span class="mt"><b>Une seule chaîne</b><small>Nom et adresse du flux</small></span></div></div><div class="mact"><button class="btn ghost" data-close>Annuler</button></div>`,m=>{
+  const prev=m.parentElement.onclick;m.parentElement.onclick=e=>{prev(e);const a=e.target.closest("[data-a]");if(!a)return;closeModal();const k=a.dataset.a;if(k==="m3u"||k==="xtream")openPlaylistAdd(k);else if(k==="file")$("#m3uIn").click();else openTvOne()}})}
+function openTvOne(){modal(`<h3>Ajouter une chaîne</h3><div class="apx"><input class="ptxt" id="tvN" placeholder="Nom de la chaîne"><input class="ptxt" id="tvU" type="url" inputmode="url" autocapitalize="off" placeholder="Adresse du flux (https://… .m3u8 ou .mp4)"></div><div class="mact"><button class="btn" data-ok>Ajouter</button><button class="btn ghost" data-close>Annuler</button></div>`,m=>{const prev=m.parentElement.onclick;
+  m.parentElement.onclick=e=>{prev(e);if(e.target.closest("[data-ok]")){const n=$("#tvN").value.trim(),u=$("#tvU").value.trim();if(!n||!/^https?:/i.test(u))return toast("Indiquez un nom et une adresse http(s)");importTv([{title:n,url:u}]);closeModal();renderLib()}}})}
+$("#m3uIn").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;const nm=f.name.replace(/\.[^.]+$/,""),r=MGP.extract(await f.text(),{url:"",title:nm});
+  if(!r.items.length)return toast("Aucune chaîne trouvée dans ce fichier");
+  openCatPick({title:"Catégories à importer",sub:"Fichier « "+f.name+" » · "+plural(r.items.length,"chaîne","chaînes"),cats:catCounts(r.items),onOk:async names=>{finishPlaylist({id:rid(),name:nm,type:"file",cats:names,updated:Date.now()},r.items.filter(i=>names.includes(i.group||"Sans catégorie")))}})};
+$("#tvPl").onclick=()=>openTvPlaylists();
 
 /* --- films en ligne (m3u8) --- */
 function openFilmsAdd(){modal(`<h3>Ajouter à Films & Séries</h3><div class="menu"><div class="mrow" data-a="file"><span class="mi">${ICON.plus}</span><span class="mt"><b>Fichiers de la tablette</b><small>Vidéos, sous-titres et jaquettes</small></span></div><div class="mrow" data-a="link"><span class="mi">${ICON.link}</span><span class="mt"><b>Depuis un lien (m3u8)</b><small>Page web, liste M3U ou fichier m3u8 : vidéos et jaquettes extraites</small></span></div></div><div class="mact"><button class="btn ghost" data-close>Annuler</button></div>`,m=>{
@@ -1487,7 +1558,7 @@ function openLinkImport(mode){const tv=mode==="tv";let found=[],page="",busy=fal
     const im=e.target.closest("[data-im]");if(im){const[i,k]=im.dataset.im.split(":").map(Number),u=lastCand.images[k];found[i].image=u.u;found[i].alts=[];found[i].forced=true;found[i].pre=null;const box=m.querySelector('[data-k="'+i+'"]').parentElement.querySelector(".lith");if(box)box.innerHTML=`<img src="${esc(u.u)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`;im.parentElement.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===im));return}
     if(e.target.closest("[data-diag]")){try{await navigator.clipboard.writeText(lastDiag);toast("Diagnostic copié : collez-le dans votre message")}catch{m.querySelector("details.liadv").open=true;m.querySelector("#liT").value=lastDiag;toast("Copie impossible : le texte est dans le champ, sélectionnez-le et copiez-le")}return}
     if(e.target.closest("[data-file]")){const fi=document.createElement("input");fi.type="file";fi.accept=".m3u,.m3u8,.html,.htm,.json,.txt,text/*,application/json";fi.onchange=async()=>{const f=fi.files[0];if(f){m.querySelector("#liT").value=await f.text();m.querySelector("#liU").value=m.querySelector("#liU").value||"";analyze()}};fi.click()}};
-  setTimeout(()=>{const u=m.querySelector("#liU");if(u&&!u.value)u.focus()},60)})}
+  setTimeout(()=>{const u=m.querySelector("#liU");if(u&&!u.value&&!m.contains(document.activeElement))u.focus()},60)})}
 $("#qBtn").innerHTML=ICON.gear;$("#chList").innerHTML=ICON.chlist;$("#chPrev").innerHTML=ICON.chprev;$("#chNext").innerHTML=ICON.chnext;
 
 /* ---------- Photos ---------- */
@@ -1975,7 +2046,7 @@ new MutationObserver(ms=>{for(const m of ms){const t=m.type==="characterData"?m.
 mqScan(document);window.MQ_READY=true;
 
 /* ---------- Réglages ---------- */
-const APP_VER="4.0",APP_BUILD=40;
+const APP_VER="4.0",APP_BUILD=41;
 /* ---------- Mise à jour de l'application ---------- */
 let UPD_T=0,updating=false;
 function showUpdateBar(remote){if($("#updbar"))return;const b=document.createElement("div");b.id="updbar";b.className="updbar";
@@ -2100,7 +2171,7 @@ async function renderSettings(){const st=await storageStats(),standalone=matchMe
   <section class="sg"><h3>Stockage</h3>
     <div class="srow"><span class="si">${SI.db}</span><div class="sl"><b>${sizeOf(st.tot)} utilisés</b><small>${quota?"sur "+sizeOf(quota)+" disponibles":"Espace disponible indéterminé"}</small><div class="sbar"><i style="width:${Math.max(2,pctU)}%"></i></div></div></div>
     ${Object.entries(N).map(([c,[l,ic]])=>sRow(ic,l,st.out[c].n?st.out[c].n+" élément"+(st.out[c].n>1?"s":"")+" · "+sizeOf(st.out[c].sz):"Vide",st.out[c].n?btn("clr:"+c,"Vider"):"")).join("")}
-    ${(()=>{const a=LS.get("mg.tv",[]),f=a.filter(c=>c.fav).length;return sRow(ICON.tv,"Chaînes TV",a.length?a.length+" chaîne"+(a.length>1?"s":"")+(f?" · "+f+" favori"+(f>1?"s":""):""):"Vide",a.length?btn("clrtv","Vider"):"")})()}
+    ${(()=>{const a=LS.get("mg.tv",[]),f=a.filter(c=>c.fav).length;const np=LS.get("mg.tv.pl",[]).length;return sRow(ICON.tv,"Chaînes TV",a.length?a.length+" chaîne"+(a.length>1?"s":"")+(np?" · "+np+" playlist"+(np>1?"s":""):"")+(f?" · "+f+" favori"+(f>1?"s":""):""):"Vide",a.length||np?btn("clrtv","Vider"):"")})()}
     ${sRow(SI.spark,"Contenus d’exemple","Photos, musique, livre, film, chaînes",`<button class="btn" data-demo>Charger</button>`)}
   </section>
   <section class="sg"><h3>Profils passagers</h3>
@@ -2152,7 +2223,7 @@ $("#setBody").addEventListener("click",async e=>{
   else if(k==="tsnd"){sfx.win();if(!cfg("sound"))toast("Les sons sont désactivés")}
   else if(k==="tvoice")sayTest()
   else if(k==="tvib"){if(!navigator.vibrate)toast("Vibration non prise en charge sur cet appareil");else if(!cfg("haptic"))toast("Le retour tactile est désactivé");else haptic("win")}
-  else if(k==="clrtv"){const n=LS.get("mg.tv",[]).length;if(confirm("Vider la liste des "+n+" chaîne"+(n>1?"s":"")+" TV (favoris et récentes compris) ?")){if(P)P.destroy();LS.set("mg.tv",[]);LS.set("mg.tv.last","");TV.cur="";TV.q="";TV.g="";toast("Chaînes TV vidées");renderSettings();counts()}}
+  else if(k==="clrtv"){const n=LS.get("mg.tv",[]).length;if(confirm("Vider la liste des "+n+" chaîne"+(n>1?"s":"")+" TV, avec ses playlists (favoris et récentes compris) ?")){if(P)P.destroy();LS.set("mg.tv",[]);LS.set("mg.tv.pl",[]);LS.set("mg.tv.last","");TV.cur="";TV.q="";TV.g="";TV.pl="";toast("Chaînes TV vidées");renderSettings();counts()}}
   else if(k.startsWith("clr:")){const c=k.slice(4);if(confirm("Vider cette catégorie ?")){await clearCat(c);toast("Catégorie vidée");renderSettings();counts()}}
   else if(k==="inst"){if(dp){dp.prompt();dp=null}else toast("Menu Chrome ⋮ › Installer l’application")}
   else if(k==="upd")checkUpdate(true)

@@ -353,6 +353,37 @@
     return r;
   };
 
+  /* ============================================================ Xtream Codes (serveur + identifiant + mot de passe) */
+  const XT = {};
+  /* « host:port », « http://host:port/ », ou une adresse get.php / player_api.php collée en entier -> origine du serveur (avec son éventuel dossier). */
+  XT.norm = s => { s = String(s || "").trim(); if (!s) return ""; if (!/^https?:\/\//i.test(s)) s = "http://" + s; try { const u = new URL(s); return u.origin + u.pathname.replace(/\/(player_api|get|panel_api|xmltv)\.php.*$/i, "").replace(/\/+$/, ""); } catch { return ""; } };
+  /* Adresse M3U d'un fournisseur Xtream (get.php?username=…&password=…) -> { server, user, pass }, sinon null. */
+  XT.fromUrl = u => { try { const x = new URL(u), user = x.searchParams.get("username"), pass = x.searchParams.get("password"); return user && pass && /\.php$/i.test(x.pathname) ? { server: XT.norm(x.origin + x.pathname), user, pass } : null; } catch { return null; } };
+  XT.url = (c, id, ext) => c.server + "/live/" + encodeURIComponent(c.user) + "/" + encodeURIComponent(c.pass) + "/" + id + "." + (ext || "m3u8");
+  XT.api = async (c, action) => {
+    const q = "username=" + encodeURIComponent(c.user) + "&password=" + encodeURIComponent(c.pass) + (action ? "&action=" + action : "");
+    const r = await get(c.server + "/player_api.php?" + q, "text", { timeout: action ? 60000 : 20000 });
+    try { return { json: JSON.parse(r.data), via: r.via }; } catch { throw new Error("Ce serveur ne répond pas comme un serveur Xtream (réponse illisible : adresse ou port incorrect ?)."); }
+  };
+  /* Vérifie les identifiants. Retourne { info: { status, exp, max, act, trial }, via }. */
+  XT.login = async c => {
+    const { json, via } = await XT.api(c, ""), ui = json && json.user_info;
+    if (!ui) throw new Error("Ce serveur ne répond pas comme un serveur Xtream.");
+    if (+ui.auth !== 1) throw new Error("Identifiant ou mot de passe refusé par le serveur.");
+    const st = String(ui.status || "Active"); if (!/^active$/i.test(st)) throw new Error("Compte non actif (" + st + ").");
+    return { info: { status: st, exp: ui.exp_date && +ui.exp_date ? +ui.exp_date * 1000 : 0, max: +ui.max_connections || 0, act: +ui.active_cons || 0, trial: String(ui.is_trial) === "1", formats: ui.allowed_output_formats || [] }, via };
+  };
+  /* Chaînes en direct : [{ sid, name, logo, group, url, epg }] */
+  XT.live = async c => {
+    const [cats, str] = await Promise.all([XT.api(c, "get_live_categories"), XT.api(c, "get_live_streams")]);
+    const cm = new Map(); (Array.isArray(cats.json) ? cats.json : []).forEach(x => cm.set(String(x.category_id), clean(x.category_name)));
+    const list = Array.isArray(str.json) ? str.json : [];
+    return { via: str.via, channels: list.filter(x => x && x.stream_id != null).map(x => ({ sid: x.stream_id, title: clean(x.name), image: isHttp(x.stream_icon) ? x.stream_icon : "", group: cm.get(String(x.category_id)) || "Sans catégorie", epg: x.epg_channel_id || "", url: XT.url(c, x.stream_id) })) };
+  };
+  MGP.xtream = XT;
+  /* Une page https ne peut pas lire un flux http:// (contenu mixte bloqué par le navigateur). */
+  MGP.mixed = u => typeof location !== "undefined" && location.protocol === "https:" && /^http:\/\//i.test(String(u || ""));
+
   /* ============================================================ lecteur HLS renforcé (lecture native du navigateur) */
   const DELAYS = [1500, 3000, 5000, 8000, 12000, 15000];
   MGP.nativeHls = () => { try { return !!document.createElement("video").canPlayType("application/vnd.apple.mpegurl"); } catch { return false; } };
