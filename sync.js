@@ -130,7 +130,7 @@
     ws.onmessage = ev => { try { if (typeof ev.data === "string") onText(JSON.parse(ev.data)); else onBin(ev.data); } catch (e) { log("err", "Message illisible", String(e)); } };
     ws.onerror = () => { S.hint = /^wss:/.test(C.url) ? "Connexion impossible. Vérifiez l’adresse, le serveur et le certificat (ca.crt installé sur la tablette)." : "Connexion impossible. Vérifiez l’adresse et le serveur."; };
     ws.onclose = () => {
-      const was = S.status; S.ws = null; clearInterval(S.pingT); S.pend.clear();
+      const was = S.status; S.ws = null; clearInterval(S.pingT); S.pend.clear(); S.remoteOn = false;
       S.peers = S.peers.map(p => p.id === C.id ? p : { ...p, online: false });
       if (S.want) { setStatus("connecting"); const d = Math.min(10000, 500 * 2 ** S.tries) + Math.random() * 300; S.tries++; log("warn", "Connexion perdue, nouvel essai", Math.round(d)); setTimeout(() => { if (S.want && !S.ws) connect(); }, d); }
       else setStatus("off");
@@ -195,14 +195,25 @@
       case "peerlib": S.peerLib = m.items || []; render(); return;
       case "game": if (window.MGSync && typeof window.MGSync.onGame === "function") window.MGSync.onGame(m.g, m.from); return;
       case "ack": return;
+      case "rcmd": return onRemoteCmd(m);
+      case "remote": S.remoteOn = !!m.on; { const h = host(); if (h && h.onListen) h.onListen(S.remoteOn); } return;
       case "nack": log("warn", "Commande refusée", m); if (!/conflit/.test(m.reason || "")) toast("Synchronisation : " + (m.reason || "commande refusée")); if (syncActive()) setTimeout(() => send({ t: "getstate" }), 450); return;
       case "xfer:req": case "xfer:ok": case "xfer:go": case "xfer:ack": case "xfer:end": case "xfer:deny": case "xfer:abort": case "xfer:done": case "xfer:offer": return onXfer(m);
       default: return;
     }
   }
+  /* ---------------------------------------------------------------- télécommande (iPhone) :
+   * le serveur relaie les commandes (rcmd) ; l'interface de l'application (MGRemoteHost, dans index.html) les exécute et répond par un accusé (rack).
+   * « at » est une heure du serveur : convertie ici en heure locale (atLocal) grâce à l'horloge déjà estimée pour la synchronisation. */
+  const host = () => window.MGRemoteHost || null;
+  function onRemoteCmd(m) {
+    const h = host(), ack = (ok, err) => send({ t: "rack", id: m.id, ok: ok !== false, err: err || "" });
+    if (!h || typeof h.exec !== "function") return ack(false, "cette version de l’application ne gère pas la télécommande");
+    try { h.exec({ ...m, atLocal: m.at != null ? m.at - S.offset : null }, ack); } catch (e) { log("err", "Commande de la télécommande", String(e)); ack(false, "erreur dans la tablette"); }
+  }
   function onWelcome(m) {
     S.tries = 0; S.master = m.master; S.mode = m.session.mode; S.shared = m.session.shared; S.session = m.session; S.maxMB = m.maxTransferMB || 1024;
-    S.offset = m.time - nowL(); setStatus("online"); startPings();
+    S.offset = m.time - nowL(); setStatus("online"); startPings(); S.remoteOn = false;
     log("info", "Connecté", { master: m.master, mode: S.mode });
     send({ t: "follow", v: C.follow });
     publishLib(true).then(() => { if (S.mode === "synced") rejoinOrPublish(); });
@@ -626,7 +637,8 @@
     setMode: m => cmd("mode", { mode: m }), swapRoles: () => send({ t: "role:swap" }), syncNow: () => send({ t: "getstate" }),
     setFollow: v => { C.follow = !!v; saveC(); send({ t: "follow", v: C.follow }); if (v && S.mode === "synced") send({ t: "getstate" }); },
     srv, quality, inv: () => INV, peer, me, publish: () => publishLib(false), onGame: null,
-    gameSend: g => send({ t: "game", g }), peerOnline: () => { const p = peer(); return S.status === "online" && !!(p && p.online); }
+    gameSend: g => send({ t: "game", g }),
+    sendTel: o => S.status === "online" && send({ t: "tel", ...o }), rlog: (level, msg) => S.status === "online" && send({ t: "rlog", level, msg }), remoteOn: () => !!S.remoteOn, online: () => S.status === "online", peerOnline: () => { const p = peer(); return S.status === "online" && !!(p && p.online); }
   };
   log("info", "Module chargé", { v: VER, id: C.id.slice(0, 8) });
 })();

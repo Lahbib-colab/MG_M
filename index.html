@@ -787,6 +787,15 @@ html[data-eco] .overlay .vspin,html[data-motion="reduce"] .overlay .vspin{animat
 .cpr{display:flex;gap:10px;align-items:center;padding:10px 4px;border-top:1px solid var(--line)}.cpr .cpn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}.cpr small{color:var(--mut)}.cpr input{width:22px;height:22px;accent-color:var(--acc);flex:none}.lires.cpl{max-height:44vh}
 .mrow .x{flex:none}
 
+/* ---------- Télécommande : blocage du contenu et annonces ---------- */
+#lockOv{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;text-align:center;padding:24px;color:#fff;background:radial-gradient(90% 60% at 50% 18%,rgba(37,99,235,.2),transparent 60%),rgba(5,8,14,.97);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px)}
+#lockOv[hidden]{display:none}
+#lockOv .lki{width:104px;height:104px;margin:0 auto 20px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16)}#lockOv .lki .ico{font-size:48px}
+#lockOv h2{margin:0 0 8px;font-size:clamp(26px,4vw,42px);font-weight:600;letter-spacing:-.01em}#lockOv p{margin:0;color:var(--mut);font-size:clamp(15px,2vw,20px)}
+#annc{position:fixed;left:50%;top:max(3vh,14px);transform:translate(-50%,-30px);opacity:0;z-index:9100;max-width:min(92vw,820px);padding:16px 26px;border-radius:22px;background:rgba(10,18,36,.95);border:1px solid rgba(96,165,250,.55);box-shadow:0 20px 60px rgba(0,0,0,.6);font-size:clamp(18px,2.6vw,28px);font-weight:600;text-align:center;color:#fff;transition:opacity .3s,transform .3s;pointer-events:none}
+#annc.on{opacity:1;transform:translate(-50%,0)}
+#annc::before{content:"Annonce";display:block;font-size:.5em;letter-spacing:.14em;text-transform:uppercase;color:#93c5fd;margin-bottom:4px;font-weight:600}
+
 /* ---------- Portrait ---------- */
 @media (orientation:portrait){
   .tiles{grid-template-columns:repeat(3,1fr);height:auto;grid-auto-rows:22vh}
@@ -1228,7 +1237,7 @@ $("#fileIn").onchange=async e=>{const fs=[...e.target.files];e.target.value="";i
 
 /* ---------- Lecteur audio ---------- */
 const aud=$("#aud"),pos=id=>LS.get(pk("pos.")+id,0);
-function playAudio(it){cur=it;setLast(it);if(audUrl)URL.revokeObjectURL(audUrl);audUrl=URL.createObjectURL(it.blob);aud.src=audUrl;aud.playbackRate=+$("#mSpd").value;applyVol();
+function playAudio(it){if(REMLOCK)return;cur=it;setLast(it);if(audUrl)URL.revokeObjectURL(audUrl);audUrl=URL.createObjectURL(it.blob);aud.src=audUrl;aud.playbackRate=+$("#mSpd").value;applyVol();
   aud.onloadedmetadata=()=>{if(cfg("resume")&&it.cat==="livres"&&pos(it.id)>2)aud.currentTime=pos(it.id)};aud.play().catch(()=>{});
   $("#mini").classList.add("on");$("#mInfo").textContent=titleOf(it);$("#mCov").innerHTML=ICON.audio;$$(".item,.card").forEach(e=>e.classList.toggle("cur",items[+e.dataset.i]?.id===it.id));
   coverFor(it.id).then(bl=>{if(cur!==it)return;if(covUrl)URL.revokeObjectURL(covUrl);covUrl=bl?URL.createObjectURL(bl):"";const m=META_CACHE.get(it.id)||{};$("#mInfo").innerHTML=`<b class="mq">${esc(titleOf(it))}</b>${m.artist?`<small class="mq">${esc(m.artist)}</small>`:""}`;$("#mCov").innerHTML=bl?`<img src="${covUrl}" alt="">`:ICON.audio;
@@ -1245,7 +1254,7 @@ if("mediaSession"in navigator){const ms=navigator.mediaSession;ms.setActionHandl
 
 /* ---------- Vidéo ---------- */
 const vid=$("#vid");
-function playVideo(src,live,it,o){o=o||{};aud.pause();if(vidUrl&&vidUrl!==src)URL.revokeObjectURL(vidUrl);const viaP=!/^blob:/.test(src);vidUrl=viaP?"":src;
+function playVideo(src,live,it,o){if(REMLOCK)return;o=o||{};aud.pause();if(vidUrl&&vidUrl!==src)URL.revokeObjectURL(vidUrl);const viaP=!/^blob:/.test(src);vidUrl=viaP?"":src;
   vid.onloadedmetadata=()=>{if(cfg("resume")&&it&&pos(it.id)>2&&pos(it.id)<vid.duration-5)vid.currentTime=pos(it.id)};vid.ontimeupdate=()=>{if(it&&Math.floor(vid.currentTime)%5===0){LS.set(pk("pos.")+it.id,vid.currentTime);if(isFinite(vid.duration))LS.set("mg.dur."+it.id,vid.duration)}};vid.onended=()=>{if(it)LS.set(pk("pos.")+it.id,0)};
   if(it)setLast(it);vid.querySelectorAll("track").forEach(t=>t.remove());curFilm=null;curSubs=[];if(it&&!live)loadSubs(it);
   const ov=$("#ovV"),was=ov.classList.contains("on"),inl=!!o.inline&&ov.parentElement&&ov.parentElement.id==="tvMain";ov.classList.add("on");ov.classList.toggle("tv",!!o.tv);ov.classList.toggle("inl",inl);ov.classList.toggle("auto",viaP);ov.classList.remove("idle");if(!was&&!inl)pushNav({o:1});
@@ -2046,7 +2055,7 @@ new MutationObserver(ms=>{for(const m of ms){const t=m.type==="characterData"?m.
 mqScan(document);window.MQ_READY=true;
 
 /* ---------- Réglages ---------- */
-const APP_VER="4.0",APP_BUILD=41;
+const APP_VER="4.0",APP_BUILD=42;
 /* ---------- Mise à jour de l'application ---------- */
 let UPD_T=0,updating=false;
 function showUpdateBar(remote){if($("#updbar"))return;const b=document.createElement("div");b.id="updbar";b.className="updbar";
@@ -2868,6 +2877,74 @@ window.__appReady=true;setTimeout(fpsWatch,8200);setTimeout(()=>checkUpdate(fals
 addEventListener("load",()=>{const h=location.hash.slice(1);if(["films","musique","livres","photos","jeux","tv"].includes(h)&&!(isKids()&&h==="tv"))setTimeout(()=>open(h),700)});
 if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
 if(navigator.storage?.persist)navigator.storage.persist();
+
+/* ---------- Télécommande (iPhone) : exécution des commandes relayées par le serveur, télémétrie ---------- */
+var REMLOCK=!!LS.get("mg.rem.lock",false);
+(function(){
+const rlog=(l,t)=>{try{window.MGSync&&MGSync.rlog&&MGSync.rlog(l,t)}catch{}};
+const nowH=()=>performance.timeOrigin+performance.now();
+const LOCK_SVG='<svg class="ico" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2.500"/><path d="M8 10.500V7.500a4 4 0 0 1 8 0v3M12 14.500v2.500"/></svg>';
+/* écran de blocage et bandeau d'annonce */
+const ov=document.createElement("div");ov.id="lockOv";ov.setAttribute("role","alertdialog");ov.setAttribute("aria-live","assertive");ov.hidden=true;
+ov.innerHTML='<div class="lkc"><div class="lki" id="lkI">'+LOCK_SVG+'</div><h2>Contenu bloqué</h2><p id="lkM">Lecture suspendue par la télécommande.</p></div>';document.body.appendChild(ov);
+const an=document.createElement("div");an.id="annc";an.setAttribute("role","status");an.setAttribute("aria-live","assertive");document.body.appendChild(an);
+let anT=0;const banner=(t,ms)=>{an.textContent=t;an.classList.add("on");clearTimeout(anT);anT=setTimeout(()=>an.classList.remove("on"),ms)};
+/* lecteur actif : la vidéo si le lecteur vidéo est ouvert, sinon la musique chargée */
+function media(){const o=$("#ovV");
+  if(o&&o.classList.contains("on")&&vid.getAttribute("src"))return{el:vid,kind:"Vidéo",label:()=>($("#vTitle").textContent||"").trim()||(typeof curFilm!=="undefined"&&curFilm?titleOf(curFilm):"")||"Vidéo"};
+  if(aud.getAttribute("src"))return{el:aud,kind:"Musique",label:()=>($("#mInfo").textContent||"").trim()||(typeof cur!=="undefined"&&cur?titleOf(cur):"")||"Audio"};
+  return null}
+/* blocage / autorisation : pause immédiate, écran plein, interface inerte ; l'état survit à un rechargement */
+function setLock(on,why){REMLOCK=!!on;LS.set("mg.rem.lock",REMLOCK);ov.hidden=!REMLOCK;
+  $$("body > *:not(#lockOv):not(#annc)").forEach(e=>{if(REMLOCK)e.setAttribute("inert","");else e.removeAttribute("inert")});
+  if(REMLOCK){[aud,vid].forEach(m=>{try{m.pause()}catch{}});$("#lkM").textContent=why||"Lecture suspendue par la télécommande."}
+  tel(true)}
+let tp=[];$("#lkI").addEventListener("click",()=>{const n=Date.now();tp=tp.filter(t=>n-t<5000);tp.push(n);if(tp.length>=7){tp=[];setLock(false);rlog("info","déblocage manuel sur la tablette");toast("Contenu débloqué")}});   // secours : 7 touches sur le cadenas
+/* volume */
+function setVolume(v){vol=Math.max(0,Math.min(100,Math.round(+v)));muted=false;LS.set("mg.vol",vol);applyVol()}
+/* annonces vocales : voix choisie dans les réglages, son du média baissé pendant la lecture */
+let duckN=0;const duck=on=>{if(on){duckN++;$$("audio,video").forEach(m=>{m.volume=Math.max(0,m.volume*.25)})}else{duckN=Math.max(0,duckN-1);if(!duckN)applyVol()}};
+addEventListener("pointerdown",()=>{try{const u=new SpeechSynthesisUtterance(" ");u.volume=0;speechSynthesis.speak(u)}catch{}},{once:true,capture:true});   // une touche suffit pour autoriser la voix
+function speak(text,lang,ack){
+  if(!("speechSynthesis"in window))return ack(false,"synthèse vocale indisponible sur cette tablette");
+  let started=false,over=false,replied=false;const reply=(ok,e)=>{if(!replied){replied=true;ack(ok,e)}};
+  const u=mkUtt(text);if(lang&&!u.voice)u.lang=lang;
+  const end=()=>{if(over)return;over=true;if(started)duck(false);banner(text,1800)};
+  u.onstart=()=>{started=true;duck(true);banner(text,60000);reply(true)};
+  u.onend=end;
+  u.onerror=e=>{const why=e&&e.error;if(over)return;over=true;if(started)duck(false);banner(text,9000);reply(false,why==="not-allowed"||why==="interrupted"&&!started?"voix non autorisée : touchez une fois l’écran de la tablette":"voix : "+(why||"erreur"))};
+  try{speechSynthesis.resume();speechSynthesis.speak(u)}catch(e){return reply(false,"voix : "+e.message)}
+  banner(text,9000);setTimeout(()=>reply(true),5000)}   // file d'attente : la tablette a bien reçu l'annonce
+/* synchro : lancement ou pause à l'heure du serveur (atLocal), avec mesure du retard */
+function doSync(m,ack){
+  const md=media();if(!md)return ack(false,"rien à lire sur cette tablette");
+  if(REMLOCK&&m.action==="play")return ack(false,"contenu bloqué");
+  const wait=m.atLocal==null?0:m.atLocal-nowH();
+  const go=()=>{const late=m.atLocal==null?0:Math.round(nowH()-m.atLocal);
+    if(m.action==="play"){const p=md.el.play();if(p&&p.catch)p.catch(e=>rlog("err","lecture refusée : "+e.name))}else md.el.pause();
+    if(late>150)rlog("info","départ en retard de "+late+" ms");tel(true)};
+  if(wait>20)setTimeout(go,wait-3);else go();
+  ack(true)}
+/* télémétrie : batterie, volume, média, état — seulement quand une télécommande écoute */
+let batt=null;try{if(navigator.getBattery)navigator.getBattery().then(b=>{batt=b;["levelchange","chargingchange"].forEach(e=>b.addEventListener(e,()=>tel()))}).catch(()=>{})}catch{}
+function snap(){const md=media();return{battery:batt?Math.round(batt.level*100):undefined,charging:batt?!!batt.charging:undefined,volume:muted?0:vol,media:md?md.kind+" · "+md.label():"",playing:!!(md&&!md.el.paused&&!md.el.ended),locked:REMLOCK}}
+let telT=0,telLast=0;
+function tel(force){const M=window.MGSync;if(!M||!M.online||!M.online())return;if(!force&&!(M.remoteOn&&M.remoteOn()))return;
+  const n=Date.now();if(n-telLast<250){clearTimeout(telT);telT=setTimeout(()=>tel(force),260);return}telLast=n;M.sendTel(snap())}
+setInterval(()=>tel(),3000);
+[aud,vid].forEach(m=>["play","pause","ended","volumechange","loadedmetadata","emptied"].forEach(e=>m.addEventListener(e,()=>tel())));
+window.MGRemoteHost={
+  exec(m,ack){switch(m.cmd){
+    case"sync":return doSync(m,ack);
+    case"lock":setLock(true);return ack(true);
+    case"unlock":setLock(false);return ack(true);
+    case"volume":setVolume(m.value);tel(true);return ack(true);
+    case"tts":return speak(m.text,m.lang,ack);
+    default:return ack(false,"commande inconnue")}},
+  onListen(on){if(on){tel(true);rlog("info","tablette prête")}},
+  state:()=>({locked:REMLOCK,snap:snap()}),setLock};
+if(REMLOCK)setLock(true,"Contenu toujours bloqué : en attente de l’autorisation de la télécommande.");
+})();
 </script>
 <script src="sync.js"></script>
 </body>
