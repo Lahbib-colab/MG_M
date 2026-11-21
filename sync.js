@@ -542,6 +542,7 @@
       ${row("", "Partage de fichiers", "Autoriser l’autre tablette à demander des contenus", sw("share", C.allowShare))}
       ${row("", "Indicateur dans le lecteur", "Petite pastille discrète pendant la lecture", sw("ind", C.indicator))}
       <div class="srow"><span class="si">${Ic("cpu")}</span><div class="sl"><b>Serveur</b><small>Adresse affichée au démarrage du serveur</small><input class="mgs-in" id="mgs-url" inputmode="url" autocapitalize="off" placeholder="wss://192.168.43.1:8443/sync" value="${E(C.url)}" aria-label="Adresse du serveur" style="margin-top:6px"></div></div>
+      ${S.status === "online" ? "" : srvHTML()}
       <div class="mgs-act"><button class="btn" data-sy="connect">${S.want ? "Reconnecter" : "Connecter"}</button><button class="btn ghost" data-sy="disconnect">Déconnecter</button><button class="btn ghost" data-sy="syncnow">Synchroniser maintenant</button><button class="btn ghost" data-sy="swap">Échanger les rôles</button></div>
       ${row("", "Bibliothèque commune", S.status === "online" ? D.common + " en commun · " + D.onlyHere.length + " seulement ici · " + D.onlyPeer.length + " seulement sur l’autre" : "Disponible une fois connecté", "")}
       ${miss || mine ? `<div class="mgs-list">${miss}${mine}</div>` : ""}
@@ -549,6 +550,42 @@
       <div class="mgs-act"><button class="btn ghost" data-sy="log">Journal</button><button class="btn ghost" data-sy="resume">Reprendre un transfert</button></div>`;
   }
   let renderT = 0;
+  /* ---- Serveur local : état (sonde /healthz) + aide au démarrage. Une page web ne peut pas lancer Termux elle-même. ---- */
+  const SRV = { st: "?", t: 0, busy: false };
+  const SRV_CMD = "cd ~/mg-sync-server && ./start-termux.sh";
+  function srvBase() { const u = (C.url || "").trim().replace(/^ws(s?):/i, "http$1:"); try { return new URL(u).origin; } catch { return ""; } }
+  async function srvProbe(force) {
+    if (SRV.busy || (!force && Date.now() - SRV.t < 4000)) return;
+    const b = srvBase(); if (!b) { SRV.st = "?"; render(); return; }
+    SRV.busy = true; const ac = new AbortController(), to = setTimeout(() => ac.abort(), 2500);
+    try { const r = await fetch(b + "/healthz", { cache: "no-store", signal: ac.signal }); const j = await r.json(); SRV.st = j && j.mgsync ? "up" : "down"; }
+    catch { SRV.st = "down"; }
+    clearTimeout(to); SRV.busy = false; SRV.t = Date.now(); render();
+  }
+  function srvHTML() {
+    const up = SRV.st === "up", dn = SRV.st === "down", col = up ? "#34d399" : dn ? "#f87171" : "#9aa3b2";
+    const txt = up ? "Serveur local en marche" : dn ? "Serveur injoignable" : (srvBase() ? "Vérification…" : "Adresse du serveur non renseignée");
+    const sub = up ? "Vous pouvez connecter les tablettes." : dn ? "Touchez « Ouvrir Termux » : si le raccourci MG-Serveur est installé, une touche suffit. Sinon, collez la commande copiée. Vérifiez aussi que le point d’accès Wi-Fi est activé et que ca.crt est installé." : "Saisissez l’adresse affichée par le serveur, ou ouvrez cette application depuis lui.";
+    return `<div class="srow"><span class="si"><i style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${col}"></i></span><div class="sl"><b id="mgs-srv-t">${txt}</b><small>${sub}</small></div></div>
+      <div class="mgs-act" style="border-top:0;padding-top:0"><button class="btn ghost" data-sy="srv-open">Ouvrir Termux</button><button class="btn ghost" data-sy="srv-copy">Copier la commande</button><button class="btn ghost" data-sy="srv-check">Vérifier</button></div>`;
+  }
+  async function srvAct(k) {
+    if (k === "srv-check") { toast("Vérification…"); return srvProbe(true); }
+    if (k === "srv-copy") {
+      try { await navigator.clipboard.writeText(SRV_CMD); toast("Commande copiée : collez-la dans Termux"); }
+      catch { modal(`<h3>Commande à saisir dans Termux</h3><p class="msub"><code>${E(SRV_CMD)}</code></p>`); }
+      return;
+    }
+    if (k === "srv-open") {
+      try { await navigator.clipboard.writeText(SRV_CMD); } catch { /* ignore */ }
+      const N = window.MGNative;
+      if (N && typeof N.launch === "function") { try { N.launch("com.termux"); toast("Termux ouvert (commande copiée)"); } catch { toast("Ouvrez Termux à la main"); } }
+      else if (/android/i.test(navigator.userAgent)) { toast("Ouverture de Termux (commande copiée)…"); location.href = "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.termux;end"; }
+      else toast("Ouvrez Termux sur la tablette 1");
+      setTimeout(() => srvProbe(true), 6000); setTimeout(() => srvProbe(true), 15000);
+    }
+  }
+  setInterval(() => { if ($q("#sync-card") && S.status !== "online") srvProbe(false); }, 5000);
   function render() { clearTimeout(renderT); renderT = setTimeout(() => { const c = $q("#sync-card"); if (!c) return; const ae = document.activeElement; if (ae && c.contains(ae) && ae.tagName === "INPUT") return; c.innerHTML = panelHTML(); }, 80); }
   function mount(host) {
     if (host.querySelector("#sync-card")) return;
@@ -556,12 +593,14 @@
     if (host.matches("[data-slot]")) host.appendChild(sec); else host.insertBefore(sec, host.children[2] || null);
     if (!C.url && /^https?:/.test(location.protocol)) fetch("/healthz", { cache: "no-store" }).then(r => r.json()).then(j => { if (j && j.mgsync && !C.url) { C.url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/sync"; saveC(); render(); } }).catch(() => { });
     scanLib().then(() => { if (S.status === "online") publishLib(); render(); }).catch(() => { });
+    srvProbe(true);
   }
   new MutationObserver(() => { const g = document.querySelector("#setBody [data-slot=sync]") || document.querySelector("#setBody .sgrid"); if (g) mount(g); }).observe(document.getElementById("setBody") || document.body, { childList: true, subtree: true });
 
   document.addEventListener("click", async e => {
     const b = e.target.closest("#sync-card [data-sy]"); if (!b) return;
     const k = b.dataset.sy;
+    if (k.startsWith("srv-")) return srvAct(k);
     if (k === "connect") {
       C.url = ($q("#mgs-url") ? $q("#mgs-url").value : C.url).trim(); saveC();
       if (S.ws) { S.want = true; try { S.ws.close(); } catch { /* ignore */ } return; }

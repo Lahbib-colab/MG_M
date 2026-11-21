@@ -1,4 +1,4 @@
-const V = "mg-media-v42";
+const V = "mg-media-v43";
 // Fichiers INDISPENSABLES : tout ou rien. S'il en manque un, la nouvelle version n'est pas installée (l'ancienne continue de marcher)
 // et elle est retentée à la vérification suivante.
 const CORE = ["./", "./index.html", "./sync.js", "./player.js", "./manifest.webmanifest"];
@@ -24,6 +24,7 @@ self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(k => Pro
 self.addEventListener("fetch", e => {
   const r = e.request, u = new URL(r.url);
   if (r.method !== "GET" || u.origin !== location.origin) return;
+  if (/\/(healthz|diag|proxy)$/.test(u.pathname)) return; // état du serveur local : jamais depuis le cache
   if (u.pathname.endsWith("/sw.js") || u.searchParams.has("_chk")) return; // toujours depuis le réseau : détection des nouvelles versions et diagnostic
   e.respondWith(caches.match(r, { ignoreSearch: true }).then(hit => hit || fetch(r).then(res => {
     const copy = res.clone(); caches.open(V).then(c => c.put(r, copy)); return res;
